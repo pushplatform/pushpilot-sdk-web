@@ -13,6 +13,10 @@ import type {
 } from './types';
 import { SDKError, ErrorCode } from './types';
 import { StorageManager } from './StorageManager';
+import { APIClient } from './APIClient';
+import { ServiceWorkerManager } from './ServiceWorkerManager';
+import { SubscriptionManager } from './SubscriptionManager';
+import { EventEmitter } from './EventEmitter';
 
 /**
  * Push Platform SDK
@@ -28,6 +32,11 @@ import { StorageManager } from './StorageManager';
 export class PushPlatform {
   private static initialized = false;
   private static config: PushPlatformConfig | null = null;
+  private static apiClient: APIClient | null = null;
+  private static currentInstallationId: string | null = null;
+  private static serviceWorkerManager: ServiceWorkerManager | null = null;
+  private static subscriptionManager: SubscriptionManager | null = null;
+  private static eventEmitter: EventEmitter = new EventEmitter();
 
   /**
    * Initialize the SDK
@@ -84,11 +93,63 @@ export class PushPlatform {
       debugMode: config.debugMode ?? false,
     };
 
+    // Create API client
+    PushPlatform.apiClient = new APIClient(PushPlatform.config);
+
+    // Create Service Worker Manager
+    PushPlatform.serviceWorkerManager = new ServiceWorkerManager();
+
+    // Create Subscription Manager
+    PushPlatform.subscriptionManager = new SubscriptionManager(
+      PushPlatform.serviceWorkerManager
+    );
+
+    // Register service worker
+    try {
+      await PushPlatform.serviceWorkerManager.register(PushPlatform.config.serviceWorkerPath || '/service-worker.js');
+
+      // Setup message listener from service worker
+      PushPlatform.setupServiceWorkerListener();
+
+      if (PushPlatform.config.debugMode) {
+        console.log('[PushPlatform] Service worker registered');
+      }
+    } catch (error) {
+      if (PushPlatform.config.debugMode) {
+        console.warn('[PushPlatform] Service worker registration failed', error);
+      }
+      // Don't fail initialization if SW registration fails
+    }
+
+    // Get or create installation ID
+    const installationId = StorageManager.getInstallationId();
+    PushPlatform.currentInstallationId = installationId;
+
+    // Register installation with backend
+    const environment = PushPlatform.config.environment || 'production';
+    try {
+      await PushPlatform.apiClient.registerInstallation({
+        installationId,
+        platform: 'web',
+        environment,
+      });
+
+      if (PushPlatform.config.debugMode) {
+        console.log('[PushPlatform] Installation registered', { installationId });
+      }
+    } catch (error) {
+      // Log but don't fail initialization if registration fails
+      if (PushPlatform.config.debugMode) {
+        console.warn('[PushPlatform] Installation registration failed', error);
+      }
+    }
+
     PushPlatform.initialized = true;
 
     if (PushPlatform.config.debugMode) {
       console.log('[PushPlatform] SDK initialized', {
         environment: PushPlatform.config.environment,
+        installationId,
       });
     }
   }
@@ -149,11 +210,28 @@ export class PushPlatform {
       );
     }
 
-    // TODO: Implement backend API call
-    throw new SDKError(
-      ErrorCode.UNKNOWN_ERROR,
-      'Not implemented yet'
-    );
+    if (!PushPlatform.apiClient || !PushPlatform.currentInstallationId) {
+      throw new SDKError(
+        ErrorCode.NOT_INITIALIZED,
+        'API client not initialized'
+      );
+    }
+
+    try {
+      await PushPlatform.apiClient.updateInstallation(
+        PushPlatform.currentInstallationId,
+        { userId }
+      );
+
+      if (PushPlatform.config?.debugMode) {
+        console.log('[PushPlatform] User logged in', { userId });
+      }
+    } catch (error) {
+      if (PushPlatform.config?.debugMode) {
+        console.error('[PushPlatform] Login failed', error);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -171,11 +249,28 @@ export class PushPlatform {
   static async logout(): Promise<void> {
     PushPlatform.ensureInitialized();
 
-    // TODO: Implement backend API call
-    throw new SDKError(
-      ErrorCode.UNKNOWN_ERROR,
-      'Not implemented yet'
-    );
+    if (!PushPlatform.apiClient || !PushPlatform.currentInstallationId) {
+      throw new SDKError(
+        ErrorCode.NOT_INITIALIZED,
+        'API client not initialized'
+      );
+    }
+
+    try {
+      await PushPlatform.apiClient.updateInstallation(
+        PushPlatform.currentInstallationId,
+        { userId: null }
+      );
+
+      if (PushPlatform.config?.debugMode) {
+        console.log('[PushPlatform] User logged out');
+      }
+    } catch (error) {
+      if (PushPlatform.config?.debugMode) {
+        console.error('[PushPlatform] Logout failed', error);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -247,11 +342,46 @@ export class PushPlatform {
   static async subscribe(): Promise<Subscription> {
     PushPlatform.ensureInitialized();
 
-    // TODO: Implement subscription
-    throw new SDKError(
-      ErrorCode.UNKNOWN_ERROR,
-      'Not implemented yet'
-    );
+    if (!PushPlatform.subscriptionManager || !PushPlatform.apiClient || !PushPlatform.currentInstallationId) {
+      throw new SDKError(
+        ErrorCode.NOT_INITIALIZED,
+        'Subscription manager not initialized'
+      );
+    }
+
+    // Check permission
+    const permission = Notification.permission;
+    if (permission !== 'granted') {
+      throw new SDKError(
+        ErrorCode.PERMISSION_DENIED,
+        'Notification permission not granted. Call requestPermission() first.'
+      );
+    }
+
+    try {
+      // Subscribe via browser Push API
+      const pushSubscription = await PushPlatform.subscriptionManager.subscribe();
+
+      // Register subscription with backend
+      await PushPlatform.apiClient.registerSubscription(
+        PushPlatform.currentInstallationId,
+        pushSubscription
+      );
+
+      // Serialize and return
+      const subscription = PushPlatform.subscriptionManager.serializeSubscription(pushSubscription);
+
+      if (PushPlatform.config?.debugMode) {
+        console.log('[PushPlatform] Subscribed', { endpoint: subscription.endpoint });
+      }
+
+      return subscription;
+    } catch (error) {
+      if (PushPlatform.config?.debugMode) {
+        console.error('[PushPlatform] Subscribe failed', error);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -269,11 +399,33 @@ export class PushPlatform {
   static async unsubscribe(): Promise<void> {
     PushPlatform.ensureInitialized();
 
-    // TODO: Implement unsubscribe
-    throw new SDKError(
-      ErrorCode.UNKNOWN_ERROR,
-      'Not implemented yet'
-    );
+    if (!PushPlatform.subscriptionManager || !PushPlatform.apiClient || !PushPlatform.currentInstallationId) {
+      throw new SDKError(
+        ErrorCode.NOT_INITIALIZED,
+        'Subscription manager not initialized'
+      );
+    }
+
+    try {
+      // Get current subscription ID (we need to store this when subscribing)
+      // For now, we'll just unsubscribe locally
+      await PushPlatform.subscriptionManager.unsubscribe();
+
+      // TODO: Delete subscription from backend (needs subscription_id)
+      // await PushPlatform.apiClient.deleteSubscription(
+      //   PushPlatform.currentInstallationId,
+      //   PushPlatform.currentSubscriptionId
+      // );
+
+      if (PushPlatform.config?.debugMode) {
+        console.log('[PushPlatform] Unsubscribed');
+      }
+    } catch (error) {
+      if (PushPlatform.config?.debugMode) {
+        console.error('[PushPlatform] Unsubscribe failed', error);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -293,11 +445,27 @@ export class PushPlatform {
   static async getSubscription(): Promise<Subscription | null> {
     PushPlatform.ensureInitialized();
 
-    // TODO: Implement get subscription
-    throw new SDKError(
-      ErrorCode.UNKNOWN_ERROR,
-      'Not implemented yet'
-    );
+    if (!PushPlatform.subscriptionManager) {
+      throw new SDKError(
+        ErrorCode.NOT_INITIALIZED,
+        'Subscription manager not initialized'
+      );
+    }
+
+    try {
+      const pushSubscription = await PushPlatform.subscriptionManager.getSubscription();
+
+      if (!pushSubscription) {
+        return null;
+      }
+
+      return PushPlatform.subscriptionManager.serializeSubscription(pushSubscription);
+    } catch (error) {
+      if (PushPlatform.config?.debugMode) {
+        console.error('[PushPlatform] Get subscription failed', error);
+      }
+      return null;
+    }
   }
 
   /**
@@ -314,14 +482,10 @@ export class PushPlatform {
    * ```
    */
   static onNotificationReceived(
-    _callback: (notification: PushNotification) => void
+    callback: (notification: PushNotification) => void
   ): UnsubscribeFn {
     PushPlatform.ensureInitialized();
-
-    // TODO: Implement event listener
-    return () => {
-      // Unsubscribe logic
-    };
+    return PushPlatform.eventEmitter.on('notificationReceived', callback);
   }
 
   /**
@@ -338,17 +502,32 @@ export class PushPlatform {
    * ```
    */
   static onNotificationClicked(
-    _callback: (notification: PushNotification) => void
+    callback: (notification: PushNotification) => void
   ): UnsubscribeFn {
     PushPlatform.ensureInitialized();
-
-    // TODO: Implement event listener
-    return () => {
-      // Unsubscribe logic
-    };
+    return PushPlatform.eventEmitter.on('notificationClicked', callback);
   }
 
   // Private helpers
+
+  /**
+   * Setup service worker message listener
+   */
+  private static setupServiceWorkerListener(): void {
+    if (!PushPlatform.serviceWorkerManager) {
+      return;
+    }
+
+    PushPlatform.serviceWorkerManager.onMessage((event) => {
+      const { type, notification } = event.data;
+
+      if (type === 'NOTIFICATION_RECEIVED') {
+        PushPlatform.eventEmitter.emit('notificationReceived', notification);
+      } else if (type === 'NOTIFICATION_CLICKED') {
+        PushPlatform.eventEmitter.emit('notificationClicked', notification);
+      }
+    });
+  }
 
   private static ensureInitialized(): void {
     if (!PushPlatform.initialized) {

@@ -60,10 +60,29 @@ sw.addEventListener('notificationclick', (event) => {
 
   notificationEvent.notification.close();
 
-  const urlToOpen = notificationEvent.notification.data?.url || '/';
+  const notificationData = notificationEvent.notification.data || {};
+  const urlToOpen = notificationData.url || '/';
+
+  const notification = {
+    id: notificationData.id || crypto.randomUUID(),
+    title: notificationEvent.notification.title,
+    body: notificationEvent.notification.body,
+    icon: notificationEvent.notification.icon,
+    badge: notificationEvent.notification.badge,
+    data: notificationData,
+    tag: notificationEvent.notification.tag,
+  };
 
   notificationEvent.waitUntil(
     sw.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Notify all clients about notification click
+      clientList.forEach((client) => {
+        client.postMessage({
+          type: 'NOTIFICATION_CLICKED',
+          notification,
+        });
+      });
+
       // Check if there's already a window open
       for (const client of clientList) {
         if (client.url === urlToOpen && 'focus' in client) {
