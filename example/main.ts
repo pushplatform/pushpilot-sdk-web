@@ -67,11 +67,30 @@ async function initialize() {
     log('Initializing SDK...');
     UI.btnInit.disabled = true;
 
+    // Load config from sessionStorage (injected via console for testing)
+    const configJson = sessionStorage.getItem('pushplatform_test_config');
+    let config;
+
+    if (configJson) {
+      config = JSON.parse(configJson);
+      log('Using config from sessionStorage', config);
+    } else {
+      // Default test config - inject real values via console before testing
+      config = {
+        apiKey: 'REPLACE_WITH_REAL_API_KEY',
+        applicationId: 'REPLACE_WITH_REAL_APP_ID',
+        apiBaseURL: 'http://localhost:8080',
+        environment: 'development',
+      };
+      log('⚠️  Using placeholder config. Inject real credentials via console:',
+          'See RUNTIME_TEST_INSTRUCTIONS.md');
+    }
+
     await PushPlatform.initialize({
-      apiKey: 'test_api_key_12345',
-      applicationId: 'app_test_001',
-      apiBaseURL: 'http://localhost:8080',
-      environment: 'development',
+      apiKey: config.apiKey,
+      applicationId: config.applicationId,
+      apiBaseURL: config.apiBaseURL,
+      environment: config.environment,
       serviceWorkerPath: '/service-worker.js',
       debugMode: true,
     });
