@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PushPlatform Web SDK - Test App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .section:last-child {
+      border-bottom: none;
+    }
+
+    .section h2 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #1f2937;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 15px;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button.primary {
+      background: #667eea;
+      color: white;
+    }
+
+    button.secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    button.success {
+      background: #10b981;
+      color: white;
+    }
+
+    button.danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .info-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 15px;
+      font-size: 13px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      word-break: break-all;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #374151;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .input-group {
+      margin-bottom: 15px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .notification-list {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+    }
+
+    .notification-item {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .notification-item:last-child {
+      border-bottom: none;
+    }
+
+    .notification-item .title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #1f2937;
+    }
+
+    .notification-item .body {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .notification-item .meta {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .empty-state {
+      padding: 40px;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔔 PushPlatform Web SDK</h1>
+      <p>Test & Debug Application</p>
+    </header>
+
+    <div class="content">
+      <div class="section">
+        <h2>1. Initialize SDK</h2>
+        <div id="init-status" class="status info">Not initialized</div>
+        <div class="button-group">
+          <button class="primary" id="btn-init">Initialize</button>
+        </div>
+        <div class="info-box" id="installation-info">
+          <strong>Installation ID:</strong>
+          <span id="installation-id">-</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>2. Request Permission</h2>
+        <div id="permission-status" class="status info">Unknown</div>
+        <div class="button-group">
+          <button class="primary" id="btn-permission" disabled>Request Permission</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>3. Subscription</h2>
+        <div id="subscription-status" class="status info">Not subscribed</div>
+        <div class="button-group">
+          <button class="success" id="btn-subscribe" disabled>Subscribe</button>
+          <button class="danger" id="btn-unsubscribe" disabled>Unsubscribe</button>
+        </div>
+        <div class="info-box" id="subscription-info" style="display: none;">
+          <strong>Subscription:</strong>
+          <pre id="subscription-data"></pre>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>4. User Authentication</h2>
+        <div id="auth-status" class="status info">Anonymous</div>
+        <div class="input-group">
+          <label for="user-id-input">User ID:</label>
+          <input type="text" id="user-id-input" placeholder="Enter user ID" disabled>
+        </div>
+        <div class="button-group">
+          <button class="primary" id="btn-login" disabled>Login</button>
+          <button class="secondary" id="btn-logout" disabled>Logout</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>5. Notifications</h2>
+        <div id="notifications-container" class="notification-list">
+          <div class="empty-state">No notifications yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/example/main.ts"></script>
+</body>
+</html>
