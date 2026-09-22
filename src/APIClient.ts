@@ -34,6 +34,7 @@ export class APIClient {
         },
         body: JSON.stringify({
           installation_id: params.installationId,
+          device_id: params.installationId, // Use installation ID as device ID for web
           application_id: this.config.applicationId,
           platform: params.platform,
           environment: params.environment,
@@ -92,6 +93,73 @@ export class APIClient {
       throw new SDKError(
         ErrorCode.NETWORK_ERROR,
         `Failed to update installation: ${String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Login user (POST /v1/installations/{id}/login)
+   */
+  async loginUser(installationId: string, userId: string): Promise<void> {
+    try {
+      const response = await fetch(
+        `${this.config.apiBaseURL}/v1/installations/${installationId}/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.config.apiKey}`,
+          },
+          body: JSON.stringify({
+            external_user_id: userId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(response);
+      }
+
+      // Login returns 200 with empty body
+    } catch (error) {
+      if (error instanceof SDKError) {
+        throw error;
+      }
+      throw new SDKError(
+        ErrorCode.NETWORK_ERROR,
+        `Failed to login user: ${String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Logout user (POST /v1/installations/{id}/logout)
+   */
+  async logoutUser(installationId: string): Promise<void> {
+    try {
+      const response = await fetch(
+        `${this.config.apiBaseURL}/v1/installations/${installationId}/logout`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.config.apiKey}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(response);
+      }
+
+      // Logout returns 200 with empty body
+    } catch (error) {
+      if (error instanceof SDKError) {
+        throw error;
+      }
+      throw new SDKError(
+        ErrorCode.NETWORK_ERROR,
+        `Failed to logout user: ${String(error)}`
       );
     }
   }
@@ -215,7 +283,7 @@ export class APIClient {
    */
   private mapInstallation(data: any): Installation {
     return {
-      installationId: data.installation_id,
+      installationId: data.id || data.installation_id, // Backend returns 'id'
       userId: data.user_id || undefined,
       createdAt: new Date(data.created_at),
     };

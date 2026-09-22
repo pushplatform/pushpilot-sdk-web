@@ -128,14 +128,19 @@ export class PushPlatform {
     // Register installation with backend
     const environment = PushPlatform.config.environment || 'production';
     try {
-      await PushPlatform.apiClient.registerInstallation({
+      const registeredInstallation = await PushPlatform.apiClient.registerInstallation({
         installationId,
         platform: 'web',
         environment,
       });
 
+      // Use the installation ID returned from backend (the actual database ID)
+      PushPlatform.currentInstallationId = registeredInstallation.installationId;
+
       if (PushPlatform.config.debugMode) {
-        console.log('[PushPlatform] Installation registered', { installationId });
+        console.log('[PushPlatform] Installation registered', {
+          installationId: registeredInstallation.installationId
+        });
       }
     } catch (error) {
       // Backend registration is critical - fail initialization if it fails
@@ -222,9 +227,9 @@ export class PushPlatform {
     }
 
     try {
-      await PushPlatform.apiClient.updateInstallation(
+      await PushPlatform.apiClient.loginUser(
         PushPlatform.currentInstallationId,
-        { userId }
+        userId
       );
 
       if (PushPlatform.config?.debugMode) {
@@ -261,9 +266,8 @@ export class PushPlatform {
     }
 
     try {
-      await PushPlatform.apiClient.updateInstallation(
-        PushPlatform.currentInstallationId,
-        { userId: null }
+      await PushPlatform.apiClient.logoutUser(
+        PushPlatform.currentInstallationId
       );
 
       if (PushPlatform.config?.debugMode) {

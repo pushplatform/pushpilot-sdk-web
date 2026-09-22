@@ -34,12 +34,25 @@ describe('PushPlatform', () => {
       permission: 'default',
       requestPermission: vi.fn().mockResolvedValue('granted'),
     } as any;
+
+    // Mock fetch for backend API calls
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        installation_id: '12345678-1234-4234-8234-123456789012',
+        device_id: '12345678-1234-4234-8234-123456789012',
+        platform: 'web',
+        environment: 'production',
+      }),
+    } as Response);
   });
 
   afterEach(() => {
     localStorage.clear();
     (PushPlatform as any).initialized = false;
     (PushPlatform as any).config = null;
+    vi.restoreAllMocks();
   });
 
   const validConfig = {
