@@ -79,7 +79,7 @@ async function initialize() {
       config = {
         apiKey: 'REPLACE_WITH_REAL_API_KEY',
         applicationId: 'REPLACE_WITH_REAL_APP_ID',
-        apiBaseURL: 'http://localhost:8080',
+        apiBaseURL: 'http://localhost:8081',
         environment: 'development',
       };
       log('⚠️  Using placeholder config. Inject real credentials via console:',
