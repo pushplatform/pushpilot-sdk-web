@@ -138,10 +138,14 @@ export class PushPlatform {
         console.log('[PushPlatform] Installation registered', { installationId });
       }
     } catch (error) {
-      // Log but don't fail initialization if registration fails
+      // Backend registration is critical - fail initialization if it fails
       if (PushPlatform.config.debugMode) {
-        console.warn('[PushPlatform] Installation registration failed', error);
+        console.error('[PushPlatform] Installation registration failed', error);
       }
+      throw new SDKError(
+        ErrorCode.NETWORK_ERROR,
+        `Failed to register installation with backend: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     PushPlatform.initialized = true;

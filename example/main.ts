@@ -95,7 +95,7 @@ async function initialize() {
       debugMode: true,
     });
 
-    const installationId = PushPlatform.getInstallationId();
+    const installationId = await PushPlatform.getInstallationId();
     log('SDK initialized', { installationId });
 
     UI.installationId.textContent = installationId;
