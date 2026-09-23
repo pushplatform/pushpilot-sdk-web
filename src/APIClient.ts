@@ -170,13 +170,10 @@ export class APIClient {
   async registerSubscription(
     installationId: string,
     subscription: PushSubscription
-  ): Promise<void> {
+  ): Promise<string> {
     try {
-      const subscriptionJSON = subscription.toJSON();
-      const keys = subscriptionJSON.keys as { p256dh: string; auth: string };
-
       const response = await fetch(
-        `${this.config.apiBaseURL}/v1/installations/${installationId}/subscriptions`,
+        `${this.config.apiBaseURL}/v1/installations/${installationId}/tokens`,
         {
           method: 'POST',
           headers: {
@@ -185,15 +182,8 @@ export class APIClient {
           },
           body: JSON.stringify({
             provider: 'web_push',
-            device_token: subscription.endpoint,
-            platform: 'web',
+            token: subscription.endpoint,
             environment: this.config.environment,
-            metadata: {
-              endpoint: subscription.endpoint,
-              p256dh: keys.p256dh,
-              auth: keys.auth,
-              user_agent: navigator.userAgent,
-            },
           }),
         }
       );
@@ -201,6 +191,8 @@ export class APIClient {
       if (!response.ok) {
         await this.handleErrorResponse(response);
       }
+      const data = await response.json();
+      return data.subscription_id;
     } catch (error) {
       if (error instanceof SDKError) {
         throw error;

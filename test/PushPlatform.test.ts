@@ -290,3 +290,64 @@ describe('PushPlatform', () => {
     });
   });
 });
+
+describe('PushPlatform backend unsubscribe lifecycle', () => {
+  const setup = (subscription: any = null) => {
+    const apiClient = {
+      deleteSubscription: vi.fn().mockResolvedValue(undefined),
+      registerSubscription: vi.fn().mockResolvedValue('sub-1'),
+    };
+    const subscriptionManager = {
+      getSubscription: vi.fn().mockResolvedValue(subscription),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
+    };
+    (PushPlatform as any).initialized = true;
+    (PushPlatform as any).apiClient = apiClient;
+    (PushPlatform as any).subscriptionManager = subscriptionManager;
+    (PushPlatform as any).currentInstallationId = 'installation-1';
+    (PushPlatform as any).currentSubscriptionId = 'sub-1';
+    return { apiClient, subscriptionManager };
+  };
+
+  beforeEach(() => localStorage.clear());
+  afterEach(() => {
+    (PushPlatform as any).initialized = false;
+    (PushPlatform as any).apiClient = null;
+    (PushPlatform as any).subscriptionManager = null;
+    (PushPlatform as any).currentSubscriptionId = null;
+    vi.restoreAllMocks();
+  });
+
+  it('removes the backend subscription before local unsubscribe', async () => {
+    const { apiClient, subscriptionManager } = setup();
+    await PushPlatform.unsubscribe();
+    expect(apiClient.deleteSubscription).toHaveBeenCalledWith('installation-1', 'sub-1');
+    expect(subscriptionManager.unsubscribe).toHaveBeenCalledOnce();
+    expect((PushPlatform as any).currentSubscriptionId).toBeNull();
+  });
+
+  it('keeps local subscription when backend removal fails', async () => {
+    const { apiClient, subscriptionManager } = setup();
+    apiClient.deleteSubscription.mockRejectedValue(new Error('backend unavailable'));
+    await expect(PushPlatform.unsubscribe()).rejects.toThrow('backend unavailable');
+    expect(subscriptionManager.unsubscribe).not.toHaveBeenCalled();
+    expect((PushPlatform as any).currentSubscriptionId).toBe('sub-1');
+  });
+
+  it('resolves an existing browser subscription before backend removal', async () => {
+    const { apiClient, subscriptionManager } = setup({ endpoint: 'https://push.example/sub' });
+    (PushPlatform as any).currentSubscriptionId = null;
+    await PushPlatform.unsubscribe();
+    expect(apiClient.registerSubscription).toHaveBeenCalledWith('installation-1', { endpoint: 'https://push.example/sub' });
+    expect(apiClient.deleteSubscription).toHaveBeenCalledWith('installation-1', 'sub-1');
+  });
+
+  it('is idempotent when no backend or browser subscription exists', async () => {
+    const { apiClient, subscriptionManager } = setup(null);
+    (PushPlatform as any).currentSubscriptionId = null;
+    await PushPlatform.unsubscribe();
+    await PushPlatform.unsubscribe();
+    expect(apiClient.deleteSubscription).not.toHaveBeenCalled();
+    expect(subscriptionManager.unsubscribe).toHaveBeenCalledTimes(2);
+  });
+});

@@ -30,10 +30,12 @@ import { EventEmitter } from './EventEmitter';
  * - Web Push API support
  */
 export class PushPlatform {
+  private static readonly subscriptionIdStorageKey = 'pushplatform_subscription_id';
   private static initialized = false;
   private static config: PushPlatformConfig | null = null;
   private static apiClient: APIClient | null = null;
   private static currentInstallationId: string | null = null;
+  private static currentSubscriptionId: string | null = null;
   private static serviceWorkerManager: ServiceWorkerManager | null = null;
   private static subscriptionManager: SubscriptionManager | null = null;
   private static eventEmitter: EventEmitter = new EventEmitter();
@@ -101,7 +103,8 @@ export class PushPlatform {
 
     // Create Subscription Manager
     PushPlatform.subscriptionManager = new SubscriptionManager(
-      PushPlatform.serviceWorkerManager
+      PushPlatform.serviceWorkerManager,
+      PushPlatform.config.vapidPublicKey
     );
 
     // Register service worker
@@ -124,6 +127,7 @@ export class PushPlatform {
     // Get or create installation ID
     const installationId = StorageManager.getInstallationId();
     PushPlatform.currentInstallationId = installationId;
+    PushPlatform.currentSubscriptionId = localStorage.getItem(PushPlatform.subscriptionIdStorageKey);
 
     // Register installation with backend
     const environment = PushPlatform.config.environment || 'production';
@@ -371,10 +375,11 @@ export class PushPlatform {
       const pushSubscription = await PushPlatform.subscriptionManager.subscribe();
 
       // Register subscription with backend
-      await PushPlatform.apiClient.registerSubscription(
+      PushPlatform.currentSubscriptionId = await PushPlatform.apiClient.registerSubscription(
         PushPlatform.currentInstallationId,
         pushSubscription
       );
+      localStorage.setItem(PushPlatform.subscriptionIdStorageKey, PushPlatform.currentSubscriptionId);
 
       // Serialize and return
       const subscription = PushPlatform.subscriptionManager.serializeSubscription(pushSubscription);
@@ -415,15 +420,22 @@ export class PushPlatform {
     }
 
     try {
-      // Get current subscription ID (we need to store this when subscribing)
-      // For now, we'll just unsubscribe locally
+      const browserSubscription = await PushPlatform.subscriptionManager.getSubscription();
+      if (browserSubscription && !PushPlatform.currentSubscriptionId) {
+        PushPlatform.currentSubscriptionId = await PushPlatform.apiClient.registerSubscription(
+          PushPlatform.currentInstallationId,
+          browserSubscription
+        );
+      }
+      if (PushPlatform.currentSubscriptionId) {
+        await PushPlatform.apiClient.deleteSubscription(
+          PushPlatform.currentInstallationId!,
+          PushPlatform.currentSubscriptionId
+        );
+      }
       await PushPlatform.subscriptionManager.unsubscribe();
-
-      // TODO: Delete subscription from backend (needs subscription_id)
-      // await PushPlatform.apiClient.deleteSubscription(
-      //   PushPlatform.currentInstallationId,
-      //   PushPlatform.currentSubscriptionId
-      // );
+      PushPlatform.currentSubscriptionId = null;
+      localStorage.removeItem(PushPlatform.subscriptionIdStorageKey);
 
       if (PushPlatform.config?.debugMode) {
         console.log('[PushPlatform] Unsubscribed');

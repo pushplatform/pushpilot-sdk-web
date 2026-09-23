@@ -17,8 +17,11 @@ export class SubscriptionManager {
   private serviceWorkerManager: ServiceWorkerManager;
   private currentSubscription: PushSubscription | null = null;
 
-  constructor(serviceWorkerManager: ServiceWorkerManager) {
+  private vapidPublicKey: string | undefined;
+
+  constructor(serviceWorkerManager: ServiceWorkerManager, vapidPublicKey?: string) {
     this.serviceWorkerManager = serviceWorkerManager;
+    this.vapidPublicKey = vapidPublicKey;
   }
 
   /**
@@ -50,13 +53,15 @@ export class SubscriptionManager {
       return existingSub;
     }
 
-    // Create new subscription
-    // Note: VAPID public key should come from backend, but we don't have that endpoint yet
-    // For now, we'll try to subscribe without applicationServerKey (will fail in production)
+    if (!this.vapidPublicKey) {
+      throw new SDKError(ErrorCode.SUBSCRIPTION_FAILED, 'VAPID public key is required');
+    }
+
     try {
+      const applicationServerKey = decodeVapidPublicKey(this.vapidPublicKey);
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        // applicationServerKey: vapidPublicKey, // TODO: Get from backend
+        applicationServerKey: applicationServerKey as BufferSource,
       });
 
       this.currentSubscription = subscription;
@@ -154,4 +159,16 @@ export class SubscriptionManager {
       // Ignore storage errors
     }
   }
+}
+
+function decodeVapidPublicKey(value: string): Uint8Array {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new SDKError(ErrorCode.SUBSCRIPTION_FAILED, 'Invalid VAPID public key encoding');
+  }
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (value.length % 4)) % 4);
+  const binary = atob(padded);
+  if (binary.length !== 65 || binary.charCodeAt(0) !== 4) {
+    throw new SDKError(ErrorCode.SUBSCRIPTION_FAILED, 'Invalid VAPID public key');
+  }
+  return Uint8Array.from(binary, char => char.charCodeAt(0));
 }
