@@ -1,6 +1,6 @@
 {
   "apiKey": "sk_live_YOUR_API_KEY_HERE",
   "applicationId": "YOUR_APPLICATION_ID_HERE",
-  "apiBaseURL": "http://localhost:8080",
+  "apiBaseURL": "http://localhost:8085",
   "environment": "development"
 }
