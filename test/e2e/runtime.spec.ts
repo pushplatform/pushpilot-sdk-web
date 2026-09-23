@@ -135,15 +135,15 @@ test.describe('Web SDK E2E', () => {
     await page.waitForSelector('#btn-init');
 
     // Inject invalid API key
-    await page.evaluate(() => {
+    await page.evaluate((apiBaseURL) => {
       const testConfig = {
         apiKey: 'sk_live_invalid_key_000000000000',
         applicationId: '00000000-0000-0000-0000-000000000000',
-        apiBaseURL: 'http://localhost:8080',
+        apiBaseURL,
         environment: 'development',
       };
       sessionStorage.setItem('pushplatform_test_config', JSON.stringify(testConfig));
-    });
+    }, testConfig.apiBaseURL);
 
     await page.reload();
     await page.waitForSelector('#btn-init');
