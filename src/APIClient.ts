@@ -183,6 +183,11 @@ export class APIClient {
           body: JSON.stringify({
             provider: 'web_push',
             token: subscription.endpoint,
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: subscription.toJSON().keys?.p256dh,
+              auth: subscription.toJSON().keys?.auth,
+            },
             environment: this.config.environment,
           }),
         }
