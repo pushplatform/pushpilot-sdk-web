@@ -172,6 +172,16 @@ export class APIClient {
     subscription: PushSubscription
   ): Promise<string> {
     try {
+      const serialized = subscription.toJSON();
+      const body: Record<string, unknown> = {
+        provider: 'web_push',
+        token: subscription.endpoint,
+        environment: this.config.environment,
+      };
+      if (serialized.keys?.p256dh && serialized.keys?.auth) {
+        body.endpoint = subscription.endpoint;
+        body.keys = { p256dh: serialized.keys.p256dh, auth: serialized.keys.auth };
+      }
       const response = await fetch(
         `${this.config.apiBaseURL}/v1/installations/${installationId}/tokens`,
         {
@@ -180,16 +190,7 @@ export class APIClient {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.config.apiKey}`,
           },
-          body: JSON.stringify({
-            provider: 'web_push',
-            token: subscription.endpoint,
-            endpoint: subscription.endpoint,
-            keys: {
-              p256dh: subscription.toJSON().keys?.p256dh,
-              auth: subscription.toJSON().keys?.auth,
-            },
-            environment: this.config.environment,
-          }),
+          body: JSON.stringify(body),
         }
       );
 
