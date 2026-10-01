@@ -4,6 +4,9 @@ import dts from 'vite-plugin-dts';
 
 export default defineConfig({
   build: {
+    // The package build runs after the main library build. Keep the main
+    // entrypoints in dist so the published files match package.json exports.
+    emptyOutDir: false,
     lib: {
       entry: resolve(__dirname, 'service-worker/index.ts'),
       name: 'PushPlatformServiceWorker',

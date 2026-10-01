@@ -18,6 +18,11 @@ Web SDK for PushPlatform - Web Push notifications integration.
 npm install @pushplatform/web-sdk
 ```
 
+For a local, unpublished package check, run `npm test`, `npm run typecheck`,
+`npm run build`, then `npm run pack:check`. The dry-run archive must contain
+`dist/index.js`, `dist/index.cjs`, `dist/index.d.ts`, and both service-worker
+entrypoints; no registry publish is required.
+
 ## Quick Start
 
 ### 1. Initialize SDK

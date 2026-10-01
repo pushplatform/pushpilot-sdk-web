@@ -13,8 +13,7 @@
     },
     "./service-worker": {
       "import": "./dist/service-worker.js",
-      "require": "./dist/service-worker.cjs",
-      "types": "./dist/service-worker.d.ts"
+      "require": "./dist/service-worker.cjs"
     }
   },
   "files": [
@@ -28,6 +27,7 @@
     "dev": "vite build --watch",
     "dev:example": "vite --config example/vite.config.ts",
     "test": "vitest run",
+    "pack:check": "npm pack --dry-run --json",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
