@@ -47,7 +47,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourorg/push-platform.git",
+    "url": "https://github.com/pushplatform/pushpilot-sdk-web.git",
     "directory": "."
   },
   "devDependencies": {
