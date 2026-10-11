@@ -35,6 +35,13 @@ describe('PushPlatform', () => {
       requestPermission: vi.fn().mockResolvedValue('granted'),
     } as any;
 
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        register: vi.fn().mockResolvedValue({ active: { state: 'activated' }, scope: window.location.origin + '/' }),
+        addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      }, configurable: true,
+    });
+
     // Mock fetch for backend API calls
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,

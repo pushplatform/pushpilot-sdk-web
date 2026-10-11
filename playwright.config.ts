@@ -1,34 +1,26 @@
-import { defineConfig, devices } from '@playwright/test';
-
-/**
- * Playwright configuration for Web SDK E2E tests
- */
+import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
-  testDir: './test/e2e',
+  testDir: "./test/e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: 0,
   workers: 1,
-  reporter: 'list',
-
+  reporter: "list",
   use: {
-    baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    baseURL: "http://127.0.0.1:3000",
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
-
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"], channel: "chromium" },
     },
   ],
-
-  // Start dev server before tests
   webServer: {
-    command: 'npm run dev:example',
-    url: 'http://localhost:3000/example/',
-    reuseExistingServer: true,
-    timeout: 60000,
+    command: "node scripts/serve-test-site.mjs",
+    url: "http://127.0.0.1:3000/index.html",
+    reuseExistingServer: false,
+    timeout: 15000,
   },
 });

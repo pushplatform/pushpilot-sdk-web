@@ -1,21 +1,8 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-
+import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
+const root = fileURLToPath(new URL("..", import.meta.url));
 export default defineConfig({
-  root: resolve(__dirname, '..'),
-  publicDir: resolve(__dirname, '../dist'),
-  server: {
-    port: 3000,
-    open: true,
-    https: false, // For localhost testing (Web Push works on localhost HTTP)
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, '../src'),
-    },
-  },
-  build: {
-    outDir: resolve(__dirname, '../dist-example'),
-    emptyOutDir: true,
-  },
+  root,
+  server: { host: "127.0.0.1", port: 3000, strictPort: true, open: false },
+  resolve: { alias: { "@pushplatform/web-sdk": `${root}/dist/index.js` } },
 });

@@ -32,6 +32,8 @@ import { EventEmitter } from './EventEmitter';
 export class PushPlatform {
   private static readonly subscriptionIdStorageKey = 'pushplatform_subscription_id';
   private static initialized = false;
+  private static initializing = false;
+  private static removeMessageListener: (() => void) | null = null;
   private static config: PushPlatformConfig | null = null;
   private static apiClient: APIClient | null = null;
   private static currentInstallationId: string | null = null;
@@ -60,6 +62,25 @@ export class PushPlatform {
    * ```
    */
   static async initialize(config: PushPlatformConfig): Promise<void> {
+    if (PushPlatform.initializing) {
+      throw new SDKError(ErrorCode.ALREADY_INITIALIZED, 'PushPlatform initialization in progress');
+    }
+    PushPlatform.initializing = true;
+    try {
+      await PushPlatform.initializeInternal(config);
+    } finally {
+      PushPlatform.initializing = false;
+    }
+  }
+
+  /** Detect support without initializing or requesting permission. */
+  static isSupported(): boolean {
+    return typeof window !== 'undefined' && window.isSecureContext !== false &&
+      typeof navigator !== 'undefined' && 'serviceWorker' in navigator &&
+      'PushManager' in window && 'Notification' in window;
+  }
+
+  private static async initializeInternal(config: PushPlatformConfig): Promise<void> {
     // Check if already initialized
     if (PushPlatform.initialized) {
       throw new SDKError(
@@ -72,15 +93,19 @@ export class PushPlatform {
     PushPlatform.validateConfig(config);
 
     // Check Service Worker support
-    if (!('serviceWorker' in navigator)) {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
       throw new SDKError(
         ErrorCode.SERVICE_WORKER_NOT_SUPPORTED,
         'Service Workers are not supported in this browser'
       );
     }
 
-    // Check Push API support
-    if (!('PushManager' in window)) {
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      throw new SDKError(ErrorCode.INSECURE_CONTEXT, 'Web Push requires HTTPS or localhost');
+    }
+
+    // Check Push and Notification APIs
+    if (typeof window === 'undefined' || !('PushManager' in window) || !('Notification' in window)) {
       throw new SDKError(
         ErrorCode.PUSH_API_NOT_SUPPORTED,
         'Push API is not supported in this browser'
@@ -90,6 +115,7 @@ export class PushPlatform {
     // Store configuration
     PushPlatform.config = {
       ...config,
+      apiBaseURL: config.apiBaseURL.replace(/\/+$/, ''),
       environment: config.environment || 'production',
       serviceWorkerPath: config.serviceWorkerPath || '/service-worker.js',
       debugMode: config.debugMode ?? false,
@@ -107,22 +133,11 @@ export class PushPlatform {
       PushPlatform.config.vapidPublicKey
     );
 
-    // Register service worker
-    try {
-      await PushPlatform.serviceWorkerManager.register(PushPlatform.config.serviceWorkerPath || '/service-worker.js');
-
-      // Setup message listener from service worker
-      PushPlatform.setupServiceWorkerListener();
-
-      if (PushPlatform.config.debugMode) {
-        console.log('[PushPlatform] Service worker registered');
-      }
-    } catch (error) {
-      if (PushPlatform.config.debugMode) {
-        console.warn('[PushPlatform] Service worker registration failed', error);
-      }
-      // Don't fail initialization if SW registration fails
-    }
+    // Registration is required for a usable SDK. Surface failures immediately.
+    await PushPlatform.serviceWorkerManager.register(
+      PushPlatform.config.serviceWorkerPath || '/service-worker.js',
+      PushPlatform.config.serviceWorkerScope
+    );
 
     // Get or create installation ID
     const installationId = StorageManager.getInstallationId();
@@ -151,12 +166,11 @@ export class PushPlatform {
       if (PushPlatform.config.debugMode) {
         console.error('[PushPlatform] Installation registration failed', error);
       }
-      throw new SDKError(
-        ErrorCode.NETWORK_ERROR,
-        `Failed to register installation with backend: ${error instanceof Error ? error.message : String(error)}`
-      );
+      throw error;
     }
 
+    PushPlatform.removeMessageListener?.();
+    PushPlatform.setupServiceWorkerListener();
     PushPlatform.initialized = true;
 
     if (PushPlatform.config.debugMode) {
@@ -432,6 +446,9 @@ export class PushPlatform {
           PushPlatform.currentInstallationId!,
           PushPlatform.currentSubscriptionId
         );
+        // Backend removal succeeded. A local retry must not repeat that deletion.
+        PushPlatform.currentSubscriptionId = null;
+        localStorage.removeItem(PushPlatform.subscriptionIdStorageKey);
       }
       await PushPlatform.subscriptionManager.unsubscribe();
       PushPlatform.currentSubscriptionId = null;
@@ -538,8 +555,9 @@ export class PushPlatform {
       return;
     }
 
-    PushPlatform.serviceWorkerManager.onMessage((event) => {
-      const { type, notification } = event.data;
+    PushPlatform.removeMessageListener = PushPlatform.serviceWorkerManager.onMessage((event) => {
+      const { type, notification } = event.data || {};
+      if (!notification || typeof notification !== 'object') return;
 
       if (type === 'NOTIFICATION_RECEIVED') {
         PushPlatform.eventEmitter.emit('notificationReceived', notification);
@@ -577,7 +595,10 @@ export class PushPlatform {
 
     // Validate URL format
     try {
-      new URL(config.apiBaseURL);
+      const url = new URL(config.apiBaseURL);
+      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
+        throw new Error('Expected an HTTP(S) base URL without credentials, query or fragment');
+      }
     } catch {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'API base URL is not a valid URL');
     }

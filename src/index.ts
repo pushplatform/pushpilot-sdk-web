@@ -22,7 +22,7 @@ export type {
 export { SDKError, ErrorCode } from './types';
 
 // Export main SDK class
-export { PushPlatform } from './PushPlatform';
+export { PushPlatform, PushPlatform as PushPilot } from './PushPlatform';
 
 // Re-export as default for convenience
 export { PushPlatform as default } from './PushPlatform';

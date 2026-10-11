@@ -1,0 +1,70 @@
+name: web-sdk-release
+on:
+  workflow_dispatch:
+    inputs:
+      expected_version:
+        description: "Exact stable version in package.json (for example 0.1.0)"
+        required: true
+        type: string
+      publish:
+        description: "Publish verified archive (requires ENABLE_NPM_PUBLISH=true and npm-production approval)"
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: web-sdk-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Check intended release version
+        env:
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const { version } = JSON.parse(fs.readFileSync('package.json'));
+          if (!/^\d+\.\d+\.\d+$/.test(version) || version !== process.env.EXPECTED_VERSION) {
+            throw Error('Stable package version must equal expected_version');
+          }
+          JS
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run release:check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-release
+          path: |
+            .artifacts/*.tgz
+            .artifacts/pack-report.json
+          if-no-files-found: error
+  publish:
+    needs: verify
+    if: inputs.publish && vars.ENABLE_NPM_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    environment: npm-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release
+          path: release-artifact
+      - name: Publish the verified archive with npm trusted publishing
+        run: npm publish release-artifact/*.tgz --ignore-scripts --access public --tag latest

@@ -87,10 +87,13 @@ export class SubscriptionManager {
     try {
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
-        await subscription.unsubscribe();
-        this.currentSubscription = null;
-        this.clearSubscription();
+        const removed = await subscription.unsubscribe();
+        if (!removed && await registration.pushManager.getSubscription()) {
+          throw new Error('Browser did not remove the push subscription');
+        }
       }
+      this.currentSubscription = null;
+      this.clearSubscription();
     } catch (error) {
       throw new SDKError(
         ErrorCode.UNSUBSCRIBE_FAILED,

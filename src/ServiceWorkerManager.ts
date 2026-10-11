@@ -15,26 +15,48 @@ export class ServiceWorkerManager {
   /**
    * Register service worker
    */
-  async register(path: string): Promise<ServiceWorkerRegistration> {
+  async register(path: string, scope?: string): Promise<ServiceWorkerRegistration> {
     if (!('serviceWorker' in navigator)) {
-      throw new SDKError(
-        ErrorCode.SERVICE_WORKER_NOT_SUPPORTED,
-        'Service Workers are not supported in this browser'
-      );
+      throw new SDKError(ErrorCode.SERVICE_WORKER_NOT_SUPPORTED, 'Service Workers are not supported');
     }
-
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    let removeStateListener: (() => void) | undefined;
     try {
-      this.registration = await navigator.serviceWorker.register(path);
-
-      // Wait for service worker to be ready
-      await navigator.serviceWorker.ready;
-
+      const activation = (async () => {
+        const registration = await navigator.serviceWorker.register(path, scope ? { scope } : undefined);
+        if (cancelled) throw new Error('Service worker activation timed out');
+        // ready can wait forever when the current page is outside the scope.
+        if (!window.location.href.startsWith(registration.scope)) {
+          throw new Error('The current page must be inside the service worker scope');
+        }
+        if (registration.active?.state !== 'activated') {
+          const worker = registration.active || registration.installing || registration.waiting;
+          if (!worker) throw new Error('No service worker available for activation');
+          await new Promise<void>((resolve, reject) => {
+            const check = () => {
+              if (worker.state === 'activated') resolve();
+              else if (worker.state === 'redundant') reject(new Error('Service worker installation failed'));
+            };
+            worker.addEventListener('statechange', check);
+            removeStateListener = () => worker.removeEventListener('statechange', check);
+            check();
+          });
+        }
+        return registration;
+      })();
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Service worker activation timed out after 15 seconds')), 15000);
+      });
+      this.registration = await Promise.race([activation, timeout]);
       return this.registration;
     } catch (error) {
-      throw new SDKError(
-        ErrorCode.SERVICE_WORKER_REGISTRATION_FAILED,
-        `Failed to register service worker: ${String(error)}`
-      );
+      throw new SDKError(ErrorCode.SERVICE_WORKER_REGISTRATION_FAILED,
+        `Failed to register service worker: ${String(error)}`);
+    } finally {
+      cancelled = true;
+      clearTimeout(timer);
+      removeStateListener?.();
     }
   }
 
@@ -65,16 +87,7 @@ export class ServiceWorkerManager {
       return this.registration;
     }
 
-    if (!('serviceWorker' in navigator)) {
-      return null;
-    }
-
-    try {
-      this.registration = await navigator.serviceWorker.ready;
-      return this.registration;
-    } catch {
-      return null;
-    }
+    return null;
   }
 
   /**

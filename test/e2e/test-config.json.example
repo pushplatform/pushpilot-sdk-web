@@ -1,6 +1,9 @@
 {
-  "apiKey": "sk_live_YOUR_API_KEY_HERE",
-  "applicationId": "YOUR_APPLICATION_ID_HERE",
-  "apiBaseURL": "http://localhost:8085",
-  "environment": "development"
+  "apiKey": "BROWSER_GATEWAY_CREDENTIAL",
+  "applicationId": "YOUR_APPLICATION_UUID",
+  "apiBaseURL": "https://your-site.example/pushpilot",
+  "environment": "development",
+  "vapidPublicKey": "YOUR_PUBLIC_VAPID_KEY",
+  "serviceWorkerPath": "/pushpilot-sw.js",
+  "serviceWorkerScope": "/"
 }
