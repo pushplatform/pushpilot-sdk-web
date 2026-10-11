@@ -229,6 +229,47 @@ test("API subscribe and unsubscribe failures retain a retry path", async ({
   await page.locator("#btn-unsubscribe").click();
   await expect(page.locator("#subscription-status")).toHaveText("Подписки нет");
 });
+test("packed worker import preserves host lexical bindings and installs push handlers", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/index.html");
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.register("/existing-worker.js");
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async () => (await navigator.serviceWorker.ready).active?.state,
+      ),
+    )
+    .toBe("activated");
+  const worker = context.serviceWorkers()[0];
+  const result = await worker.evaluate(async () => {
+    const scope = self as unknown as ServiceWorkerGlobalScope & {
+      hostValues: () => { t: string; sw: string };
+    };
+    let shownTitle: string | undefined;
+    // Only notification display is replaced; import, registration and dispatch are real.
+    scope.registration.showNotification = async (title) => {
+      shownTitle = title;
+    };
+    const waits: Promise<unknown>[] = [];
+    const event = new Event("push");
+    Object.defineProperties(event, {
+      data: { value: { json: () => ({ title: "Imported handler" }) } },
+      waitUntil: { value: (promise: Promise<unknown>) => waits.push(promise) },
+    });
+    scope.dispatchEvent(event);
+    await Promise.all(waits);
+    return { hostValues: scope.hostValues(), shownTitle };
+  });
+  expect(result).toEqual({
+    hostValues: { t: "host-t", sw: "host-sw" },
+    shownTitle: "Imported handler",
+  });
+});
+
 test("real worker displays a local notification and handles synthetic push/click events", async ({
   page,
   context,

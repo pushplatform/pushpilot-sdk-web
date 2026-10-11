@@ -15,6 +15,16 @@ const server = createServer(async (request, response) => {
     const pathname = decodeURIComponent(
       new URL(request.url, "http://localhost").pathname,
     );
+    if (pathname === "/existing-worker.js") {
+      response.setHeader("Content-Type", types[".js"]);
+      response.setHeader("Cache-Control", "no-store");
+      response.end(
+        await readFile(
+          new URL("../test/e2e/fixtures/existing-worker.js", import.meta.url),
+        ),
+      );
+      return;
+    }
     const path = resolve(
       root,
       `.${pathname === "/" ? "/index.html" : pathname}`,

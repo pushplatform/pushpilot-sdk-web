@@ -43,6 +43,7 @@ for (const name of [
   "LICENSE",
   "README.md",
   "docs/API.md",
+  "docs/WEB_BROWSER_AUTH_TASK.md",
   "example/index.html",
   "example/npm.html",
   "example/main.js",
@@ -53,7 +54,7 @@ for (const name of [
 }
 for (const name of names) {
   assert(
-    /^(dist\/|docs\/(API|WEB_SDK_RELEASE)\.md$|example\/(index\.html|npm\.html|main\.js|service-worker\.js|README\.md)$|scripts\/copy-assets\.mjs$|package\.json$|README\.md$|CHANGELOG\.md$|LICENSE$)/.test(
+    /^(dist\/|docs\/(API|WEB_SDK_RELEASE|WEB_BROWSER_AUTH_TASK)\.md$|example\/(index\.html|npm\.html|main\.js|service-worker\.js|README\.md)$|scripts\/copy-assets\.mjs$|package\.json$|README\.md$|CHANGELOG\.md$|LICENSE$)/.test(
       name,
     ),
     `Unexpected package file: ${name}`,

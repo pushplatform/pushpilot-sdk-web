@@ -32,6 +32,7 @@
     "example/README.md",
     "scripts/copy-assets.mjs",
     "docs/API.md",
+    "docs/WEB_BROWSER_AUTH_TASK.md",
     "docs/WEB_SDK_RELEASE.md",
     "README.md",
     "CHANGELOG.md",

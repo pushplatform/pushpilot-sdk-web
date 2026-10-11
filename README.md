@@ -120,6 +120,9 @@ SDK ждёт активацию своей регистрации до 15 сек
 importScripts('/assets/pushpilot/service-worker.js');
 ```
 
+`service-worker.js` собран как IIFE: его внутренние переменные не конфликтуют
+с общей областью видимости существующего classic worker.
+
 И укажите его путь в `serviceWorkerPath`. Для module worker используйте статический
 `import` при сборке своего worker; SDK сам регистрирует classic worker. Если ваш
 существующий worker уже зарегистрирован как module, интеграция требует адаптации
@@ -154,7 +157,8 @@ VAPID key остаётся на сервере. SDK добавляет `Bearer` 
 `devices:write`, совпадающими project и environment. Cross-origin API должен
 разрешать origin сайта, OPTIONS, POST/PATCH/DELETE и заголовки Authorization,
 Content-Type. При HTTPS-сайте API тоже должен быть HTTPS. Недостающий публичный
-контракт и ограничение текущего CORS записаны в [отчёте релиза](docs/WEB_SDK_RELEASE.md).
+контракт безопасной браузерной авторизации и ограничение текущего CORS сохранены
+как [отдельная открытая задача](docs/WEB_BROWSER_AUTH_TASK.md).
 
 ## Пример и проверки
 

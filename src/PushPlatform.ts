@@ -440,16 +440,16 @@ export class PushPlatform {
           PushPlatform.currentInstallationId,
           browserSubscription
         );
+        localStorage.setItem(PushPlatform.subscriptionIdStorageKey, PushPlatform.currentSubscriptionId);
       }
       if (PushPlatform.currentSubscriptionId) {
         await PushPlatform.apiClient.deleteSubscription(
           PushPlatform.currentInstallationId!,
           PushPlatform.currentSubscriptionId
         );
-        // Backend removal succeeded. A local retry must not repeat that deletion.
-        PushPlatform.currentSubscriptionId = null;
-        localStorage.removeItem(PushPlatform.subscriptionIdStorageKey);
       }
+      // Keep the ID until local removal succeeds, including across reloads.
+      // DELETE is idempotent; retrying it must not create a new server subscription.
       await PushPlatform.subscriptionManager.unsubscribe();
       PushPlatform.currentSubscriptionId = null;
       localStorage.removeItem(PushPlatform.subscriptionIdStorageKey);

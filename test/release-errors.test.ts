@@ -127,4 +127,102 @@ describe("Release error handling", () => {
       code: ErrorCode.UNSUBSCRIBE_FAILED,
     });
   });
+
+  it.each([
+    { failure: "false", reload: false, knownId: true },
+    { failure: "throw", reload: false, knownId: true },
+    { failure: "false", reload: true, knownId: true },
+    { failure: "throw", reload: true, knownId: true },
+    { failure: "false", reload: true, knownId: false },
+    { failure: "throw", reload: true, knownId: false },
+  ])(
+    "does not re-register after browser $failure, reload=$reload, knownId=$knownId and retry API failure",
+    async ({ failure, reload, knownId }) => {
+      let browserSubscribed = true;
+      let backendSubscribed = false;
+      let tokenRegistrations = 0;
+      let deletions = 0;
+      const subscription = {
+        endpoint: "https://push.invalid/retry-fixture",
+        toJSON: () => ({
+          keys: { p256dh: "public-fixture", auth: "auth-fixture" },
+        }),
+        unsubscribe: vi
+          .fn()
+          .mockImplementationOnce(async () => {
+            if (failure === "throw")
+              throw new Error("Browser unsubscribe failed");
+            return false;
+          })
+          .mockImplementation(async () => {
+            browserSubscribed = false;
+            return true;
+          }),
+      };
+      registration.pushManager = {
+        getSubscription: async () => (browserSubscribed ? subscription : null),
+      };
+      vi.mocked(fetch).mockImplementation(async (url, options) => {
+        if (options?.method === "DELETE") {
+          deletions++;
+          // A temporary API failure must not reactivate the subscription.
+          if (deletions === 2)
+            return new Response("Unavailable", { status: 500 });
+          backendSubscribed = false;
+          return new Response(null, { status: 204 });
+        }
+        if (String(url).endsWith("/tokens")) {
+          tokenRegistrations++;
+          backendSubscribed = true;
+          return new Response(
+            JSON.stringify({ subscription_id: "subscription-id" }),
+          );
+        }
+        return new Response(JSON.stringify({ id: "backend-id" }));
+      });
+
+      await PushPlatform.initialize(config);
+      if (knownId) await PushPlatform.subscribe();
+      await expect(PushPlatform.unsubscribe()).rejects.toMatchObject({
+        code: ErrorCode.UNSUBSCRIBE_FAILED,
+      });
+      expect(backendSubscribed).toBe(false);
+      expect(localStorage.getItem("pushplatform_subscription_id")).toBe(
+        "subscription-id",
+      );
+
+      if (reload) {
+        // Reinitialization reloads the persisted ID into a new subscription manager.
+        (PushPlatform as any).initialized = false;
+        (PushPlatform as any).currentSubscriptionId = null;
+        await PushPlatform.initialize(config);
+      }
+      await expect(PushPlatform.unsubscribe()).rejects.toMatchObject({
+        code: ErrorCode.API_ERROR,
+        context: { status: 500 },
+      });
+      expect(tokenRegistrations).toBe(1);
+      expect(backendSubscribed).toBe(false);
+      expect(localStorage.getItem("pushplatform_subscription_id")).toBe(
+        "subscription-id",
+      );
+      expect(subscription.unsubscribe).toHaveBeenCalledOnce();
+
+      await expect(PushPlatform.unsubscribe()).resolves.toBeUndefined();
+      expect(tokenRegistrations).toBe(1);
+      expect(deletions).toBe(3);
+      expect(backendSubscribed).toBe(false);
+      expect(await PushPlatform.getSubscription()).toBeNull();
+      expect(localStorage.getItem("pushplatform_subscription_id")).toBeNull();
+      const deleteURLs = vi
+        .mocked(fetch)
+        .mock.calls.filter(([, options]) => options?.method === "DELETE")
+        .map(([url]) => String(url));
+      expect(new Set(deleteURLs)).toEqual(
+        new Set([
+          "https://api.example/v1/installations/backend-id/subscriptions/subscription-id",
+        ]),
+      );
+    },
+  );
 });

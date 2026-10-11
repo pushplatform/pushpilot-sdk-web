@@ -11,9 +11,11 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "service-worker/index.ts"),
       name: "PushPlatformServiceWorker",
-      formats: ["es", "cjs"],
+      // Classic importScripts shares the host worker's global lexical scope.
+      // Keep our bindings inside an IIFE, including minified names such as `t`.
+      formats: ["iife", "cjs"],
       fileName: (format) => {
-        if (format === "es") return "service-worker.js";
+        if (format === "iife") return "service-worker.js";
         if (format === "cjs") return "service-worker.cjs";
         return `service-worker.${format}.js`;
       },
