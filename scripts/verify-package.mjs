@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 
@@ -58,7 +59,9 @@ for (const name of names) {
     `Unexpected package file: ${name}`,
   );
 }
-const consumer = await mkdtemp(resolve(artifacts, "consumer-"));
+const consumer = await realpath(
+  await mkdtemp(resolve(tmpdir(), "pushpilot-web-sdk-consumer-")),
+);
 await writeFile(
   resolve(consumer, "package.json"),
   JSON.stringify({

@@ -103,7 +103,9 @@ lockfile, запустить `release.yml` с `publish=false`, изучить ar
 
 - Базовый набор: 55 unit-тестов. После изменений: 70 unit-тестов, typecheck проходят.
 - Настоящий tarball: allowlist из 24 файлов, ESM/CJS, оба TypeScript NodeNext
-  потребителя и bundler сборка сайта из установленного `.tgz` проходят. В архиве
+  потребителя и bundler сборка сайта из установленного `.tgz` проходят.
+  Чистый потребитель создаётся вне checkout, во временном каталоге, чтобы
+  Node/TypeScript не использовали зависимости родительского репозитория. В архиве
   нет test config, workflow, node_modules, backend-файлов или ключей.
 - Chromium: 9 сценариев проходят. Проверены script tag и npm entry, отсутствие
   автозапроса разрешения, пользовательский жест, denied/default, reload/отписка,
@@ -127,3 +129,8 @@ lockfile, запустить `release.yml` с `publish=false`, изучить ar
 - Финальная проверка: `npm ci` по обновлённому lockfile проходит; оба workflow
   проходят YAML parsing; обычный `npm pack` запускает `prepack` и содержит те же
   24 разрешённых файла. `npm audit --omit=dev` — 0 findings.
+
+- GitHub CI для исходной реализации и отчёта прошёл в push и pull_request
+  ([run](https://github.com/pushplatform/pushpilot-sdk-web/actions/runs/38155104344)).
+  Усиленная проверка потребителя вне checkout также прошла локально с 9
+  браузерными сценариями; итоговая версия проверяется CI в этом же PR.
