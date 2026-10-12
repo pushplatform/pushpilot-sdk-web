@@ -1,6 +1,6 @@
 # Конфигурация и API Web SDK
 
-Все методы доступны у `PushPlatform` и алиаса `PushPilot`. SDK — singleton:
+Все методы доступны у `PushPilot`. SDK — singleton:
 одно приложение/окружение на страницу. Не переключайте конфигурацию после
 инициализации; для другого приложения используйте отдельный origin или профиль
 браузера. Сохранённая installation/subscription идентичность относится к этому
@@ -11,8 +11,8 @@
 | Поле | Назначение |
 | --- | --- |
 | `apiBaseURL` | Абсолютный HTTP(S) URL API/шлюза без query, fragment, userinfo. Без `/v1`; завершающий `/` удаляется SDK. |
-| `apiKey` | Bearer credential шлюза; прямой серверный API key допустим только в закрытом тестовом окружении. |
-| `browserAuth` | `true` включает `/v1/web/{apiKey}/installations` и обмен credentials; `apiKey` должен быть публичным `wbpub_` ключом. По умолчанию legacy API. |
+| `apiKey` | Публичный `wbpub_` browser key приложения при `browserAuth: true`. Проектный секрет браузеру не передаётся. |
+| `browserAuth` | Используйте `true` для `/v1/web/{apiKey}/installations` и credential своей установки. Для значения по умолчанию `false` см. раздел совместимости. |
 | `installationCredential` | Credential своей установки, выданная доверенным сервером сайта для recovery. Не проектный секрет; сервер проверяет её при регистрации. |
 | `applicationId` | UUID Web-приложения PushPilot. |
 | `vapidPublicKey` | Base64url, 65-байтный публичный P-256 ключ без padding. Обязателен для новой подписки. |
@@ -47,7 +47,7 @@ endpoint. Отписка после reload использует сохранён
 без повторного POST tokens. API/шлюз должен успешно обрабатывать повторную DELETE
 уже удалённой подписки. ID очищается только после успешной локальной отписки.
 
-## Существующий HTTP-контракт
+## Совместимость с legacy API
 
 Таблица ниже относится к legacy API/шлюзу. В `browserAuth: true` SDK использует
 `/v1/web/{publicBrowserKey}/installations`, сначала Bearer public key, затем только
@@ -55,7 +55,7 @@ Bearer credential installation. PATCH для user association не доступ�
 verified login/logout. 401/403 сохраняются как `api_error`; credential не стирается
 и public key не используется для захвата существующей установки. 429 сохраняет
 HTTP status; API возвращает `Retry-After: 60`, автоматических повторов нет.
-[Серверный контракт](https://github.com/pushplatform/pushpilot-server/blob/feat/web-browser-auth/docs/WEB_BROWSER_AUTH.md).
+[Серверный контракт](https://github.com/pushplatform/pushpilot-server/blob/main/docs/WEB_BROWSER_AUTH.md).
 
 Каждый запрос содержит `Authorization: Bearer <apiKey>`. JSON-запросы также
 содержат `Content-Type: application/json`. Fetch имеет таймаут получения ответа

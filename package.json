@@ -1,7 +1,7 @@
 {
   "name": "@pushplatform/web-sdk",
-  "version": "0.1.0",
-  "description": "Web SDK PushPilot: Web Push, service worker и управление подписками",
+  "version": "0.1.1",
+  "description": "PushPilot для сайтов: Web Push, подписка и отписка, обработка нажатий на уведомления",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -181,3 +181,72 @@ lockfile, запустить `release.yml` с `publish=false`, изучить ar
 Production rollout миграции и server config пока не выполнен. Рабочая БД,
 console и внешняя push-доставка не проверялись/не менялись. GitHub Checks не
 опрашиваются, их результат сообщит владелец. Merge и публикация не выполняются.
+
+## 2026-10-12: публикация в npm с dist-tag next
+
+Владелец подтвердил merge Server/Web SDK и зелёный CI, явно разрешил публичную
+публикацию в `@pushplatform` с тегом `next`. Локальный SDK main обновлён до
+`726e52dd1eb7328cb6ed35caec68cb8c55260b61`. Server main включает
+`origin/main c9d5db0` через локальный merge `3d8f136`; существующий локальный
+коммит и незакоммиченная owner-console работа сохранены. Server main не пушился.
+
+Использован готовый проверенный tarball, без новой сборки и повторения тестов:
+
+- Опубликована версия: `@pushplatform/web-sdk@0.1.0`, dist-tag `next`, public access.
+- Архив: `.artifacts/pushplatform-web-sdk-0.1.0.tgz`, 25 файлов, 90355 bytes.
+- SHA-256: `65ef23a3f4165a1d466dc159288ea102f60fb1fcf0da888bb8263b809a42023f`.
+- Все файлы архива побайтно совпадают с checkout смердженного SDK до добавления
+  этой записи. Дерево `main` совпадает с ранее проверенным SDK commit `cf53d14`.
+- Страница: [@pushplatform/web-sdk 0.1.0](https://www.npmjs.com/package/@pushplatform/web-sdk/v/0.1.0).
+- Команда установки: `npm install @pushplatform/web-sdk@next`.
+- Фиксация версии: `npm install @pushplatform/web-sdk@0.1.0`.
+
+**Статус: публикация завершена, установка из npm проверена.** Первоначальный
+`npm publish` остановился с `EOTP`; владелец выполнил 2FA и подтвердил успешную
+публикацию. Registry независимо подтвердил `next = 0.1.0` (также `latest = 0.1.0`;
+теги после публикации не менялись в этой проверке), shasum
+`2a4ab79c402aadf9fe5f7217171c92a672715659` и integrity готового tarball.
+
+В 08:32 UTC выполнена **ровно одна** чистая установка из публичного registry,
+вне checkout и с новым пустым npm cache:
+
+```sh
+npm install @pushplatform/web-sdk@next --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --cache=/private/tmp/pushpilot-web-npm-next-install.PWIoVj/npm-cache --fetch-retries=0
+```
+
+Результат: установлен один пакет версии `0.1.0`; package-lock указывает на
+`https://registry.npmjs.org/@pushplatform/web-sdk/-/web-sdk-0.1.0.tgz`, integrity
+совпадает с ранее проверенной сборкой. ESM import и CommonJS require проходят,
+алиас `PushPilot` доступен. Script-tag/worker exports разрешаются в существующие
+файлы, declarations ESM/CJS присутствуют; runtime dependencies нет. Эта проверка
+не запускала браузер или повторную компиляцию TypeScript.
+
+Чистый consumer сохранён в `/private/tmp/pushpilot-web-npm-next-install.PWIoVj`,
+локальный JSON-отчёт — `.artifacts/npm-next-install-report.json` (не входит в
+публикуемый пакет). Lifecycle scripts выключены. Сборки, unit/browser/backend
+тесты и GitHub Checks не повторялись. Deploy и реальные push не выполнялись.
+
+## 2026-10-12: пользовательская документация, patch 0.1.1
+
+README переписан как инструкция подключения PushPilot: npm/script tag, browser
+API configuration, service worker/VAPID, кнопки subscribe/unsubscribe и callback
+клика. История классов сведена к текущим экспортам в разделе совместимости;
+внутренние статусы и release-процедуры остаются в этом документе. Legacy API
+описан отдельно. Обновлены description, API-документация и changelog.
+
+Для изменения README на npm требуется новая версия:
+[правило npm](https://docs.npmjs.com/about-package-readme-files/#updating-an-existing-package-readmemd-file).
+Подготовлена `0.1.1`, версия и корневой lockfile согласованы. Registry подтвердил,
+что версия ещё не занята. `.artifacts/pushplatform-web-sdk-0.1.1.tgz` упаковывается
+с `--ignore-scripts` из неизменённого проверенного dist версии 0.1.0. Сборки,
+установка и уже пройденные тесты не повторяются; публикация 0.1.1 не выполняется.
+
+Команда владельцу после ревью/merge документации:
+
+```sh
+npm publish /Users/pavelvladimiroff/Documents/dev/MonoRepo/pushpilot-sdk-web/.artifacts/pushplatform-web-sdk-0.1.1.tgz --ignore-scripts --access public --tag next --registry=https://registry.npmjs.org
+```
+
+При запросе 2FA добавить `--otp=YOUR_2FA_CODE`. Уже опубликованная 0.1.0
+не меняется. В RN отдельная ветка содержит только публичные тексты и patch
+metadata 1.0.1; JS/native/plugin payload переиспользуется из опубликованной 1.0.0.
