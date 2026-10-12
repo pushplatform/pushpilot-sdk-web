@@ -1,215 +1,219 @@
-# Web SDK PushPilot
+# PushPilot Web SDK
 
-`@pushplatform/web-sdk` — Web Push SDK для сайта: разрешения, регистрация
-установки, подписка/отписка, события уведомлений. Сохранены имя npm-пакета
-и класс `PushPlatform`; `PushPilot` — его совместимый алиас.
+PushPilot подключает Web Push к вашему сайту: запрашивает разрешение пользователя,
+регистрирует подписку в PushPilot, позволяет отписаться и обрабатывать нажатия
+на уведомления. Работает через npm или обычный `<script>`.
 
-Пакет подготовлен к публикации. Команда установки из registry станет доступна
-после выпуска владельцем npm scope. Проверка локального архива уже предусмотрена
-без публикации. Реальная доставка через внешние push-сервисы отдельно требует проверки.
-
-## Установка через npm
+## Установка
 
 ```sh
-npm install @pushplatform/web-sdk
+npm install @pushplatform/web-sdk@next
 ```
-
-Используйте Node.js 22.14+ для инструментов этого репозитория. Сам SDK работает
-в браузере и не имеет runtime-зависимостей.
 
 ```js
 import { PushPilot } from '@pushplatform/web-sdk';
 ```
 
-ESM, CommonJS и TypeScript declarations включены. npm не размещает service worker
-на вашем сайте автоматически: скопируйте `dist/service-worker.js` в публичную
-директорию сайта, например `public/pushpilot-sw.js`. Сохраните файл при обновлении
-пакета в вашем build-скрипте.
+Пакет включает ESM, CommonJS, TypeScript declarations и сборку для script tag.
+Runtime-зависимостей нет.
 
-## Обычный script tag
+## Настройка сайта
 
-Скопируйте `dist/sdk.global.js` и `dist/service-worker.js` из установленного пакета
-на свой сервер. Например, SDK в `/assets/pushpilot/sdk.global.js`, worker в
-`/pushpilot-sw.js`. Сборка `sdk.global.js` не требует bundler или `type="module"`.
+Для подключения нужны:
 
-```html
-<button id="enable" disabled>Разрешить уведомления</button>
-<button id="disable" disabled>Отписаться</button>
-<p id="status" role="status"></p>
-<script src="/assets/pushpilot/sdk.global.js"></script>
-<script>
-  const { PushPilot } = window.PushPilot;
-  const status = document.getElementById('status');
-  const enable = document.getElementById('enable');
-  const disable = document.getElementById('disable');
-  const error = e => { status.textContent = `${e.code || 'error'}: ${e.message}`; };
+- HTTPS URL API PushPilot, без `/v1` в конце.
+- UUID Web-приложения, окружение `production` или `development` и публичный
+  browser key вида `wbpub_…` для этого приложения и окружения.
+- Разрешённый origin сайта в настройке browser API, например `https://shop.example`.
+- VAPID public key того же приложения и окружения: base64url, публичный P-256 ключ.
+  Private VAPID key и проектный API key остаются на сервере.
 
-  async function start() {
-    if (!PushPilot.isSupported()) {
-      status.textContent = 'Web Push недоступен. Нужны HTTPS и поддерживаемый браузер.';
-      return;
-    }
-    try {
-      await PushPilot.initialize({
-        apiBaseURL: 'https://your-site.example/pushpilot', // ваш серверный шлюз
-        apiKey: 'BROWSER_GATEWAY_CREDENTIAL', // НЕ секретный API key PushPilot
-        applicationId: 'YOUR_APPLICATION_UUID',
-        vapidPublicKey: 'YOUR_PUBLIC_VAPID_KEY',
-        environment: 'production',
-        serviceWorkerPath: '/pushpilot-sw.js',
-        serviceWorkerScope: '/',
-      });
-      PushPilot.onNotificationClicked(n => { status.textContent = `Нажатие: ${n.title || n.id}`; });
-      enable.disabled = false;
-      disable.disabled = !(await PushPilot.getSubscription());
-    } catch (e) { error(e); }
-  }
-  enable.onclick = async () => {
-    enable.disabled = true;
-    try {
-      // Вызывается непосредственно обработчиком нажатия.
-      const permission = await PushPilot.requestPermission();
-      if (permission === 'granted') {
-        await PushPilot.subscribe();
-        disable.disabled = false;
-        status.textContent = 'Подписка зарегистрирована';
-      } else {
-        status.textContent = permission === 'denied'
-          ? 'Уведомления запрещены. Измените настройки сайта в браузере.'
-          : 'Запрос закрыт. Можно повторить.';
-      }
-    } catch (e) { error(e); }
-    finally { enable.disabled = false; }
-  };
-  disable.onclick = async () => {
-    disable.disabled = true;
-    try { await PushPilot.unsubscribe(); status.textContent = 'Подписка удалена'; }
-    catch (e) { error(e); disable.disabled = false; }
-  };
-  start();
-</script>
+Параметры browser API задаёт администратор вашего сервера PushPilot.
+[Серверная настройка](https://github.com/pushplatform/pushpilot-server/blob/main/docs/WEB_BROWSER_AUTH.md).
+
+Разместите worker на своём сайте. Для проекта с публичной директорией `public`:
+
+```sh
+mkdir -p public
+cp node_modules/@pushplatform/web-sdk/dist/service-worker.js public/pushpilot-sw.js
 ```
 
-Для npm используйте те же методы после `import { PushPilot } ...`.
-Не вызывайте `requestPermission()` при загрузке страницы. Запрос, закрытый
-пользователем (`default`), можно повторить кнопкой; при `denied` нужны настройки
-браузера. Ошибка API показывается через `SDKError.code`, HTTP-статус — в
-`context.status`. Повторите неуспешную операцию явно. После ошибки регистрации
-в API браузерная подписка может уже существовать: `getSubscription()` показывает
-состояние браузера, а успешный `subscribe()` подтверждает регистрацию в PushPilot.
+После публикации сайта файл должен открываться по `/pushpilot-sw.js` с JavaScript
+MIME type, без HTML fallback. Обновляйте копию worker при обновлении SDK.
 
-## HTTPS и service worker
+## Минимальный пример
 
-В production нужен HTTPS; для разработки допустим `http://localhost` или
-`http://127.0.0.1`. Проверяйте возможности через `isSupported()`, а не только
-название или версию браузера. На iOS/iPadOS 16.4+ Web Push доступен веб-приложениям,
-добавленным на домашний экран ([WebKit](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)).
+Добавьте кнопки на страницу и подключите файл приложения через ваш bundler:
 
-Worker должен обслуживаться вашим origin с JavaScript MIME type, без HTML fallback
-на неизвестные URL. Файл в корне (`/pushpilot-sw.js`) позволяет scope `/`.
-Для `/shop/sw.js` стандартный scope — `/shop/`; текущая страница должна находиться
-в этом scope. Более широкий scope требует HTTP-заголовка
-`Service-Worker-Allowed` на ответе worker
-([правила регистрации](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register)).
-SDK ждёт активацию своей регистрации до 15 секунд и сообщает ошибку.
+```html
+<button id="subscribe" disabled>Разрешить уведомления</button>
+<button id="unsubscribe" disabled>Отписаться</button>
+<p id="push-status" role="status"></p>
+```
 
-Если на сайте уже есть worker, не заменяйте его отдельным worker с тем же scope.
-Добавьте в существующий classic worker:
+В файле приложения замените URL, UUID и публичные ключи своими значениями:
+
+```js
+import { PushPilot } from '@pushplatform/web-sdk';
+
+const subscribe = document.getElementById('subscribe');
+const unsubscribe = document.getElementById('unsubscribe');
+const output = document.getElementById('push-status');
+const showError = error => {
+  output.textContent = `${error.code || 'error'}: ${error.message}`;
+};
+
+subscribe.onclick = async () => {
+  subscribe.disabled = true;
+  try {
+    // Запрос разрешения вызывается только по нажатию пользователя.
+    const permission = await PushPilot.requestPermission();
+    if (permission !== 'granted') {
+      output.textContent = permission === 'denied'
+        ? 'Уведомления запрещены. Разрешите их в настройках сайта в браузере.'
+        : 'Запрос закрыт. Нажмите кнопку, чтобы повторить.';
+      return;
+    }
+    await PushPilot.subscribe();
+    output.textContent = 'Подписка зарегистрирована в PushPilot';
+  } catch (error) { showError(error); }
+  finally { subscribe.disabled = false; }
+};
+
+unsubscribe.onclick = async () => {
+  unsubscribe.disabled = true;
+  try {
+    await PushPilot.unsubscribe();
+    output.textContent = 'Подписка удалена';
+  } catch (error) { showError(error); }
+  finally { unsubscribe.disabled = false; }
+};
+
+async function start() {
+  if (!PushPilot.isSupported()) {
+    output.textContent = 'Web Push недоступен в этом браузере или на этом origin.';
+    return;
+  }
+  try {
+    await PushPilot.initialize({
+      apiBaseURL: 'https://api.example.com',
+      applicationId: 'YOUR_APPLICATION_UUID',
+      apiKey: 'wbpub_your_site',
+      browserAuth: true,
+      environment: 'production',
+      vapidPublicKey: 'YOUR_PUBLIC_VAPID_KEY',
+      serviceWorkerPath: '/pushpilot-sw.js',
+      serviceWorkerScope: '/',
+    });
+    PushPilot.onNotificationClicked(notification => {
+      output.textContent = `Открыто уведомление: ${notification.title || notification.id}`;
+    });
+    subscribe.disabled = false;
+    unsubscribe.disabled = false;
+    output.textContent = 'PushPilot подключён';
+  } catch (error) { showError(error); }
+}
+
+start();
+```
+
+`initialize()` не запрашивает разрешение. При `denied` повторный вызов кнопкой
+не изменит настройку браузера; пользователь должен разрешить уведомления вручную.
+Ошибки API доступны через `error.code` и `error.context?.status`. Неуспешную
+операцию можно повторить явно. При ошибке API во время отписки SDK сохраняет
+браузерную подписку для повтора.
+
+## Подключение обычным script tag
+
+Скопируйте `dist/sdk.global.js` из установленного пакета в публичную директорию
+сайта, например `/assets/pushpilot/sdk.global.js`. Worker разместите как описано выше.
+
+```html
+<script src="/assets/pushpilot/sdk.global.js"></script>
+<script src="/main.js"></script>
+```
+
+В `main.js` используйте код примера, заменив строку `import` на:
+
+```js
+const { PushPilot } = window.PushPilot;
+```
+
+Подключайте скрипты после HTML кнопок. Bundler и `type="module"` для этого способа
+не нужны.
+
+## Service worker и переход по нажатию
+
+Worker должен находиться на origin сайта. Файл `/pushpilot-sw.js` позволяет scope
+`/`; для `/shop/sw.js` стандартный scope — `/shop/`. Текущая страница должна
+находиться в этом scope. Более широкий scope требует заголовка
+[`Service-Worker-Allowed`](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register)
+в ответе worker.
+
+Если на сайте уже есть classic worker, скопируйте `dist/service-worker.js` по
+адресу `/assets/pushpilot/service-worker.js` и добавьте в существующий worker:
 
 ```js
 importScripts('/assets/pushpilot/service-worker.js');
 ```
 
-`service-worker.js` собран как IIFE: его внутренние переменные не конфликтуют
-с общей областью видимости существующего classic worker.
+Укажите путь существующего worker в `serviceWorkerPath`. Не регистрируйте второй
+worker с тем же scope.
 
-И укажите его путь в `serviceWorkerPath`. Для module worker используйте статический
-`import` при сборке своего worker; SDK сам регистрирует classic worker. Если ваш
-существующий worker уже зарегистрирован как module, интеграция требует адаптации
-регистрации на стороне сайта. Проверьте конфликтующие `push`/`notificationclick`
-обработчики. Шаблон не содержит `skipWaiting`: обновление существующего активного
-worker может ждать закрытия вкладок. Политику обновлений определяет сайт.
+Для перехода по нажатию передайте URL в данных уведомления:
 
-Worker показывает уведомление, рассылает `NOTIFICATION_RECEIVED` открытым страницам,
-по нажатию рассылает `NOTIFICATION_CLICKED` и открывает `data.url` (или
-`custom_data.url`) вашего origin. Относительный URL разрешается относительно scope;
-при некорректном или внешнем URL открывается scope. Для открытого точного URL
-используется `focus()`. Callback страницы работает, когда она уже открыта и SDK
-инициализирован. Для холодного открытия используйте URL и его параметры;
-событие callback после запуска новой страницы не гарантируется.
-
-## Подключение к PushPilot
-
-Для backend с новой браузерной авторизацией используйте публичный `wbpub_` ключ:
-
-```js
-await PushPilot.initialize({
-  apiBaseURL: 'https://api.your-site.example',
-  applicationId: 'YOUR_APPLICATION_UUID',
-  apiKey: 'wbpub_your_site',
-  browserAuth: true,
-  environment: 'production',
-  vapidPublicKey: 'YOUR_PUBLIC_VAPID_KEY',
-  serviceWorkerPath: '/pushpilot-sw.js',
-});
+```json
+{"title":"Заказ готов","body":"Откройте заказ","data":{"url":"/orders/123"}}
 ```
 
-SDK обменивает публичный ключ на credential installation и сохраняет её отдельно
-для API/application/environment/browser key. Reload использует эту credential;
-401 не вызывает автоматического перехода обратно к публичному ключу. Срок — 7 суток;
-`renewInstallationCredential()` обновляет действующую credential. Для login сервер
-сайта возвращает одноразовый proof, затем `login(userId, identityProof)`.
-`getBackendInstallationId()` даёт ID для запроса proof у вашего сервера;
-`getInstallationId()` сохраняет прежнее значение локального device UUID.
-Восстановление после expiry/revocation/потери ответа выполняет доверенный сервер
-сайта, проверяющий свою сессию и владение installation; его результат передайте
-как `installationCredential` в initialize. Проектный секрет в браузер не передаётся.
+Worker открывает URL своего origin или фокусирует уже открытую страницу с этим
+URL. Относительный адрес разрешается относительно scope; внешний или некорректный
+URL заменяется адресом scope. `custom_data.url` также поддерживается.
 
-Новые маршруты требуют отдельного backend rollout и миграции; они не появляются
-от установки npm-пакета. [Контракт и серверная настройка](https://github.com/pushplatform/pushpilot-server/blob/feat/web-browser-auth/docs/WEB_BROWSER_AUTH.md).
+`onNotificationClicked()` сообщает событие уже открытой и инициализированной
+странице. При запуске сайта из закрытого состояния обрабатывайте адрес страницы
+и его параметры: callback после открытия новой страницы не гарантируется.
 
-Нужны Application UUID, окружение (`development`/`production`), API URL и публичный
-VAPID key, совпадающий с ключом backend для этого приложения и окружения. Private
-VAPID key остаётся на сервере. SDK добавляет `Bearer` в Authorization и использует
-маршруты существующего Device Registry, перечисленные в [API.md](docs/API.md).
+## Поддержка браузеров и ограничения
 
-В legacy Device Registry ключ `devices:write` ограничен проектом, а не одной установкой
-посетителя. Это серверный секрет: **не кладите его в HTML, JS, public env или CDN**.
-Для публичного сайта настройте собственный шлюз с теми же маршрутами и JSON:
-он хранит секрет, проверяет сессию/владение установкой, application и environment,
-ограничивает частоту запросов. `apiBaseURL` указывает на шлюз, `apiKey` — его
-специальную browser credential. SDK отправляет `Bearer`, не cookies; схема выдачи
-и проверки этой credential относится к вашему шлюзу. SDK не реализует шлюз.
+- Для установки пакета через npm используйте Node.js 22.14+. Сам SDK выполняется
+  в браузере.
+- Нужны Service Worker, Push API и Notifications API. Проверяйте
+  `PushPilot.isSupported()` до инициализации: наличие функций зависит от браузера,
+  платформы и настроек пользователя.
+  [Таблица совместимости Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API#browser_compatibility).
+- В production нужны HTTPS для сайта и API. Для локальной разработки допустимы
+  `http://localhost` и `http://127.0.0.1`.
+- На iOS/iPadOS 16.4+ Web Push доступен веб-приложениям, добавленным на домашний
+  экран. [Условия WebKit](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
+- Нужен доступный `localStorage`. Один экземпляр SDK использует одно приложение
+  и окружение на странице; не переключайте их после инициализации.
+- Browser credential действует 7 суток. `renewInstallationCredential()` заменяет
+  действующую credential. Для восстановления просроченной или утраченной credential
+  и для `login(userId, identityProof)` нужен доверенный сервер вашего сайта.
+  [Конфигурация и методы](https://github.com/pushplatform/pushpilot-sdk-web/blob/main/docs/API.md).
+- SDK регистрирует classic worker. Существующий module worker требует адаптации
+  регистрации на стороне сайта. Обновление worker может ждать закрытия вкладок;
+  согласуйте его `push` и `notificationclick` обработчики с PushPilot.
+- Успешный `subscribe()` подтверждает регистрацию подписки в API. Доставка и показ
+  уведомления зависят от сервера, push-сервиса, ОС и браузера; этот ответ их не подтверждает.
 
-При прямой интеграции в закрытом тестовом окружении нужен API key со scope
-`devices:write`, совпадающими project и environment. Cross-origin API должен
-разрешать origin сайта, OPTIONS, POST/PATCH/DELETE и заголовки Authorization,
-Content-Type. При HTTPS-сайте API тоже должен быть HTTPS. Недостающий публичный
-контракт безопасной браузерной авторизации и статус отдельной реализации описаны
-в [задаче](docs/WEB_BROWSER_AUTH_TASK.md).
+## Совместимость
 
-## Пример и проверки
+Также доступны именованный экспорт `PushPlatform` и default export. Для нового
+кода используйте `PushPilot`.
 
-```sh
-npm ci
-npm run dev:example
-# http://127.0.0.1:3000/example/index.html — script tag
-# http://127.0.0.1:3000/example/npm.html — npm import
-```
+При `browserAuth: false` (значение по умолчанию) SDK использует legacy Device
+Registry `/v1/installations`. Для публичного сайта этот режим требует вашего
+серверного шлюза: он хранит проектный ключ, проверяет владение установкой и
+выдаёт браузеру собственную credential. В конфигурации SDK укажите URL шлюза
+и его credential. Проектный ключ `devices:write` нельзя размещать в HTML, JS,
+public env или CDN. [HTTP-контракт совместимости](https://github.com/pushplatform/pushpilot-sdk-web/blob/main/docs/API.md#совместимость-с-legacy-api).
 
-Заполните форму конфигурации, подключитесь, затем нажмите кнопку разрешения,
-подписки или отписки. «Показать локальное уведомление» проверяет отображение и
-переход без внешней доставки. [Инструкция примера](example/README.md).
+## Документация
 
-```sh
-npx playwright install chromium
-npm run release:check
-```
+- [Конфигурация и API](https://github.com/pushplatform/pushpilot-sdk-web/blob/main/docs/API.md).
+- [Пример сайта: npm и script tag](https://github.com/pushplatform/pushpilot-sdk-web/tree/main/example).
+- [Настройка браузерного API PushPilot](https://github.com/pushplatform/pushpilot-server/blob/main/docs/WEB_BROWSER_AUTH.md).
 
-Команда проверяет типы, unit-тесты, содержимое настоящего `npm pack`, установку
-`.tgz` в чистый проект, ESM/CJS/TypeScript и страницы собранного примера в Chromium.
-PushManager и API в этих сценариях — локальные fixtures. Фактическая подписка
-у внешнего push-провайдера, доставка и ручное нажатие системного уведомления
-в проверку не входят. [Подготовка публикации и доступы](docs/WEB_SDK_RELEASE.md).
-
-Лицензия: [MIT](LICENSE).
+Лицензия: [MIT](https://github.com/pushplatform/pushpilot-sdk-web/blob/main/LICENSE).
