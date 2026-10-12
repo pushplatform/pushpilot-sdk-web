@@ -35,6 +35,12 @@ export interface PushPlatformConfig {
    */
   apiKey: string;
 
+  /** Use public wbpub_ identifier and installation credentials on /v1/web routes. */
+  browserAuth?: boolean;
+
+  /** Installation credential returned by your trusted site server for recovery. Never a project key. */
+  installationCredential?: string;
+
   /**
    * Backend application UUID
    */

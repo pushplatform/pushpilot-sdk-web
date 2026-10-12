@@ -88,6 +88,64 @@ async function initialize(page: Page) {
   await page.locator("#btn-init").click();
 }
 for (const entry of ["index.html", "npm.html"]) {
+  test(`${entry}: browser credentials are exchanged and retained across reload`, async ({
+    page,
+  }) => {
+    await fixtures(page);
+    const credential = "wbinst_" + "A".repeat(43);
+    const authHeaders: string[] = [];
+    await page.route("**/api/v1/web/wbpub_site_fixture/**", async (route) => {
+      const request = route.request();
+      authHeaders.push(request.headers().authorization);
+      if (request.method() === "DELETE") return route.fulfill({ status: 204 });
+      if (new URL(request.url()).pathname.endsWith("/tokens")) {
+        expect(request.headers().authorization).toBe(`Bearer ${credential}`);
+        return route.fulfill({
+          status: 201,
+          json: { subscription_id: "subscription-fixture" },
+        });
+      }
+      return route.fulfill({
+        status: 201,
+        json: {
+          id: "installation-fixture",
+          installation_credential: credential,
+          credential_expires_at: new Date(Date.now() + 86400000).toISOString(),
+          created_at: new Date().toISOString(),
+        },
+      });
+    });
+    const connect = async () => {
+      await page.locator("[name=apiBaseURL]").fill("http://127.0.0.1:3000/api");
+      await page.locator("[name=applicationId]").fill("application-fixture");
+      await page.locator("[name=apiKey]").fill("wbpub_site_fixture");
+      await page.locator("[name=browserAuth]").check();
+      await page
+        .locator("[name=vapidPublicKey]")
+        .fill(Buffer.from([4, ...new Uint8Array(64)]).toString("base64url"));
+      await page.locator("#btn-init").click();
+      await expect(page.locator("#init-status")).toHaveText("SDK подключён");
+    };
+    await page.goto(`/${entry}`);
+    await connect();
+    expect(authHeaders[0]).toBe("Bearer wbpub_site_fixture");
+    await page.locator("#btn-permission").click();
+    await page.locator("#btn-subscribe").click();
+    await expect(page.locator("#subscription-status")).toHaveText(
+      "Подписка зарегистрирована в PushPilot",
+    );
+    await page.reload();
+    await connect();
+    await page.locator("#btn-unsubscribe").click();
+    await expect(page.locator("#subscription-status")).toHaveText(
+      "Подписки нет",
+    );
+    expect(
+      authHeaders.slice(1).every((header) => header === `Bearer ${credential}`),
+    ).toBe(true);
+  });
+}
+for (const entry of ["index.html", "npm.html"]) {
   test(`${entry}: click permission → subscribe → reload → unsubscribe`, async ({
     page,
   }) => {

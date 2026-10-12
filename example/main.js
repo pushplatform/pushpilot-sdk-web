@@ -63,6 +63,7 @@ byId("config").addEventListener("submit", (event) => {
     const config = Object.fromEntries(new FormData(event.currentTarget));
     await PushPlatform.initialize({
       ...config,
+      browserAuth: config.browserAuth === "on",
       serviceWorkerPath: "./service-worker.js",
       serviceWorkerScope: "./",
     });

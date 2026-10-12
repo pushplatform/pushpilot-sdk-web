@@ -1,5 +1,10 @@
 # Пример сайта
 
+Для нового browser API включите «Браузерная авторизация PushPilot (wbpub_)» и
+укажите публичный `wbpub_` ключ, Application UUID, environment и public VAPID key.
+Backend должен быть настроен на origin этого примера. Без флага сохраняется режим
+legacy API/шлюза. Server project key никогда не используется на публичном сайте.
+
 Из checkout:
 
 ```sh

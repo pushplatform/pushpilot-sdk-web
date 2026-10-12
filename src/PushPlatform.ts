@@ -227,7 +227,7 @@ export class PushPlatform {
    * await PushPlatform.login('user-123');
    * ```
    */
-  static async login(userId: string): Promise<void> {
+  static async login(userId: string, identityProof?: string): Promise<void> {
     PushPlatform.ensureInitialized();
 
     if (!userId || typeof userId !== 'string') {
@@ -247,7 +247,8 @@ export class PushPlatform {
     try {
       await PushPlatform.apiClient.loginUser(
         PushPlatform.currentInstallationId,
-        userId
+        userId,
+        identityProof
       );
 
       if (PushPlatform.config?.debugMode) {
@@ -259,6 +260,21 @@ export class PushPlatform {
       }
       throw error;
     }
+  }
+
+  /** Backend ID for requesting an installation-bound identity proof from your site server. */
+  static async getBackendInstallationId(): Promise<string> {
+    PushPlatform.ensureInitialized();
+    if (!PushPlatform.currentInstallationId) throw new SDKError(ErrorCode.NOT_INITIALIZED, 'Installation is not registered');
+    return PushPlatform.currentInstallationId;
+  }
+
+  static async renewInstallationCredential(): Promise<void> {
+    PushPlatform.ensureInitialized();
+    if (!PushPlatform.apiClient || !PushPlatform.currentInstallationId) {
+      throw new SDKError(ErrorCode.NOT_INITIALIZED, 'API client not initialized');
+    }
+    await PushPlatform.apiClient.renewInstallationCredential(PushPlatform.currentInstallationId);
   }
 
   /**
@@ -591,6 +607,10 @@ export class PushPlatform {
 
     if (!config.apiBaseURL || typeof config.apiBaseURL !== 'string') {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'API base URL is required');
+    }
+
+    if (config.browserAuth && !/^wbpub_[A-Za-z0-9_-]{6,80}$/.test(config.apiKey)) {
+      throw new SDKError(ErrorCode.INVALID_CONFIG, 'browserAuth requires a public wbpub_ browser key');
     }
 
     // Validate URL format
