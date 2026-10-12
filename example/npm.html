@@ -63,7 +63,7 @@
       /></label>
       <label>Application ID <input name="applicationId" required /></label>
       <label
-        >Ключ шлюза / тестовый API key
+        >Публичный browser key / credential шлюза
         <input name="apiKey" type="password" autocomplete="off" required
       /></label>
       <label
@@ -75,6 +75,10 @@
           <option value="development">development</option>
           <option value="production">production</option>
         </select></label
+      >
+      <label
+        ><input type="checkbox" name="browserAuth" /> Браузерная авторизация
+        PushPilot (wbpub_)</label
       >
       <button id="btn-init" type="submit">Подключить PushPilot</button>
     </form>

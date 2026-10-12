@@ -140,12 +140,40 @@ Worker показывает уведомление, рассылает `NOTIFICA
 
 ## Подключение к PushPilot
 
+Для backend с новой браузерной авторизацией используйте публичный `wbpub_` ключ:
+
+```js
+await PushPilot.initialize({
+  apiBaseURL: 'https://api.your-site.example',
+  applicationId: 'YOUR_APPLICATION_UUID',
+  apiKey: 'wbpub_your_site',
+  browserAuth: true,
+  environment: 'production',
+  vapidPublicKey: 'YOUR_PUBLIC_VAPID_KEY',
+  serviceWorkerPath: '/pushpilot-sw.js',
+});
+```
+
+SDK обменивает публичный ключ на credential installation и сохраняет её отдельно
+для API/application/environment/browser key. Reload использует эту credential;
+401 не вызывает автоматического перехода обратно к публичному ключу. Срок — 7 суток;
+`renewInstallationCredential()` обновляет действующую credential. Для login сервер
+сайта возвращает одноразовый proof, затем `login(userId, identityProof)`.
+`getBackendInstallationId()` даёт ID для запроса proof у вашего сервера;
+`getInstallationId()` сохраняет прежнее значение локального device UUID.
+Восстановление после expiry/revocation/потери ответа выполняет доверенный сервер
+сайта, проверяющий свою сессию и владение installation; его результат передайте
+как `installationCredential` в initialize. Проектный секрет в браузер не передаётся.
+
+Новые маршруты требуют отдельного backend rollout и миграции; они не появляются
+от установки npm-пакета. [Контракт и серверная настройка](https://github.com/pushplatform/pushpilot-server/blob/feat/web-browser-auth/docs/WEB_BROWSER_AUTH.md).
+
 Нужны Application UUID, окружение (`development`/`production`), API URL и публичный
 VAPID key, совпадающий с ключом backend для этого приложения и окружения. Private
 VAPID key остаётся на сервере. SDK добавляет `Bearer` в Authorization и использует
 маршруты существующего Device Registry, перечисленные в [API.md](docs/API.md).
 
-В текущем backend ключ `devices:write` ограничен проектом, а не одной установкой
+В legacy Device Registry ключ `devices:write` ограничен проектом, а не одной установкой
 посетителя. Это серверный секрет: **не кладите его в HTML, JS, public env или CDN**.
 Для публичного сайта настройте собственный шлюз с теми же маршрутами и JSON:
 он хранит секрет, проверяет сессию/владение установкой, application и environment,
@@ -157,8 +185,8 @@ VAPID key остаётся на сервере. SDK добавляет `Bearer` 
 `devices:write`, совпадающими project и environment. Cross-origin API должен
 разрешать origin сайта, OPTIONS, POST/PATCH/DELETE и заголовки Authorization,
 Content-Type. При HTTPS-сайте API тоже должен быть HTTPS. Недостающий публичный
-контракт безопасной браузерной авторизации и ограничение текущего CORS сохранены
-как [отдельная открытая задача](docs/WEB_BROWSER_AUTH_TASK.md).
+контракт безопасной браузерной авторизации и статус отдельной реализации описаны
+в [задаче](docs/WEB_BROWSER_AUTH_TASK.md).
 
 ## Пример и проверки
 

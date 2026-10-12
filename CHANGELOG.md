@@ -2,6 +2,11 @@
 
 ## Подготовлено к следующей публикации (0.1.0)
 
+- Опциональный browserAuth: публичный `wbpub_` ключ, установка с собственной
+  credential, scope хранения, verified login, renewal и trusted server recovery.
+- `getBackendInstallationId()` для installation-bound identity proof; legacy API
+  и значение `getInstallationId()` сохранены.
+
 - Установка npm: ESM, CommonJS и declarations для обоих форматов; сохранено имя
   `@pushplatform/web-sdk`, добавлен алиас класса `PushPilot`.
 - Собранный `sdk.global.js` для обычного script tag без bundler.

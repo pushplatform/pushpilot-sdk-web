@@ -73,8 +73,8 @@
 
 ## Отдельная задача backend
 
-[Безопасная браузерная авторизация Web SDK](WEB_BROWSER_AUTH_TASK.md) остаётся
-открытой: credential отдельной установки, проверка владения, доверенный login,
+[Безопасная браузерная авторизация Web SDK](WEB_BROWSER_AUTH_TASK.md) на момент
+исходного release PR оставалась открытой: credential отдельной установки, проверка владения, доверенный login,
 production CORS и адаптация обмена credential в SDK. Альтернатива — шлюз сайта
 с серверным проектным ключом. Маршруты Device Registry уже существуют; секрет
 `devices:write` нельзя публиковать в браузере. Backend и база в этом PR не меняются.
@@ -146,3 +146,38 @@ lockfile, запустить `release.yml` с `publish=false`, изучить ar
   ([run](https://github.com/pushplatform/pushpilot-sdk-web/actions/runs/38155104344)).
   Усиленная проверка потребителя вне checkout также прошла локально с 9
   браузерными сценариями; итоговая версия проверяется CI в этом же PR.
+
+## 2026-10-12: безопасный browser API
+
+Владелец подтвердил merge Web PR и зелёный CI; локальный main обновлён до
+`788a554`. Новая работа изолирована в ветках `feat/web-browser-auth` двух
+репозиториев. Backend основан на `origin/main eac126e`, в отдельном worktree;
+чужие owner/console изменения и рабочая база сохранены.
+
+- Реализован [backend-контракт](WEB_BROWSER_AUTH_TASK.md): публичный browser key,
+  отдельная installation credential, scope application/environment/origin,
+  проверка владения, запрет переноса чужого endpoint, shared rate limits,
+  verified login, renewal/revoke и server-only recovery. Секрет проекта браузеру
+  не передаётся; сервер сайта проверяет сессию и владение перед proof/recovery.
+- SDK `browserAuth: true` использует `/v1/web`, хранит credential по API/app/env/key,
+  не переходит к публичному ключу после 401. Добавлены identity proof для login,
+  `getBackendInstallationId`, `renewInstallationCredential` и recovery candidate
+  `installationCredential`, который подтверждается API до сохранения.
+- Typecheck и 63 unit tests четырёх затронутых файлов — PASS. Pack check — PASS:
+  25 разрешённых файлов, ESM/CJS/NodeNext, чистая установка tarball вне checkout
+  и сборка сайта. Состав/exports/dependencies и ручной release workflow сохранены;
+  merge сам не запускает публикацию. Test-only HTTP harness не входит в архив.
+- Пять Chromium сценариев — PASS: browserAuth и legacy reload/unsubscribe через
+  npm/script tag, локальный настоящий worker с синтетическими push/click событиями.
+  PushManager/API здесь используют fixtures. Отдельный Node harness проверил
+  собранный SDK через настоящий новый HTTP backend: register, tokens, verified
+  login/logout, renewal и unsubscribe на одноразовом PostgreSQL testcontainer.
+- Backend финальный HTTP suite с race detector — 11/11 subtests PASS, включая
+  параллельную регистрацию, foreign scope/ID/endpoint, JWT proof replay/expiry,
+  revoked/expired credential, shared quotas и отказ счётчиков. Затронутые service/
+  config tests с race detector и go vet — PASS. Подробные команды и границы:
+  [backend evidence](https://github.com/pushplatform/pushpilot-server/blob/feat/web-browser-auth/docs/WEB_BROWSER_AUTH.md).
+
+Production rollout миграции и server config пока не выполнен. Рабочая БД,
+console и внешняя push-доставка не проверялись/не менялись. GitHub Checks не
+опрашиваются, их результат сообщит владелец. Merge и публикация не выполняются.

@@ -12,9 +12,49 @@ import { SDKError, ErrorCode } from './types';
  */
 export class APIClient {
   private config: PushPlatformConfig;
+  private installationCredential: string | null = null;
+  private credentialStorageKey: string;
 
   constructor(config: PushPlatformConfig) {
     this.config = config;
+    this.credentialStorageKey = 'pushpilot_web_credential:' + JSON.stringify([
+      config.apiBaseURL.replace(/\/+$/, ''), config.applicationId, config.environment || 'production', config.apiKey,
+    ]);
+    if (config.browserAuth) {
+      if (config.installationCredential) {
+        if (!/^wbinst_[A-Za-z0-9_-]{43}$/.test(config.installationCredential)) throw new SDKError(ErrorCode.INVALID_CONFIG, 'Invalid recovered installation credential');
+        this.installationCredential = config.installationCredential;
+        return;
+      }
+      const stored = localStorage.getItem(this.credentialStorageKey);
+      if (stored && /^wbinst_[A-Za-z0-9_-]{43}$/.test(stored)) this.installationCredential = stored;
+    }
+  }
+
+  private get installationURL(): string {
+    const base = this.config.apiBaseURL.replace(/\/+$/, '');
+    return this.config.browserAuth
+      ? `${base}/v1/web/${encodeURIComponent(this.config.apiKey)}/installations`
+      : `${base}/v1/installations`;
+  }
+
+  private bearer(registration = false): string {
+    if (!this.config.browserAuth) return this.config.apiKey;
+    if (this.installationCredential) return this.installationCredential;
+    if (registration) return this.config.apiKey;
+    throw new SDKError(ErrorCode.NOT_INITIALIZED, 'Browser installation credential is required');
+  }
+
+  private saveCredential(data: Record<string, unknown>): void {
+    if (typeof data.installation_credential !== 'string' ||
+        !/^wbinst_[A-Za-z0-9_-]{43}$/.test(data.installation_credential) ||
+        typeof data.credential_expires_at !== 'string' ||
+        !Number.isFinite(Date.parse(data.credential_expires_at)) ||
+        Date.parse(data.credential_expires_at) <= Date.now()) {
+      throw new SDKError(ErrorCode.API_ERROR, 'API response is missing a valid installation credential');
+    }
+    localStorage.setItem(this.credentialStorageKey, data.installation_credential);
+    this.installationCredential = data.installation_credential;
   }
 
   /**
@@ -26,11 +66,11 @@ export class APIClient {
     environment: string;
   }): Promise<Installation> {
     try {
-      const response = await this.request(`${this.config.apiBaseURL}/v1/installations`, {
+      const response = await this.request(this.installationURL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          'Authorization': `Bearer ${this.bearer(true)}`,
         },
         body: JSON.stringify({
           installation_id: params.installationId,
@@ -46,7 +86,9 @@ export class APIClient {
       }
 
       const data = await response.json();
-      return this.mapInstallation(data);
+      const installation = this.mapInstallation(data);
+      if (this.config.browserAuth) this.saveCredential(data);
+      return installation;
     } catch (error) {
       if (error instanceof SDKError) {
         throw error;
@@ -65,14 +107,15 @@ export class APIClient {
     installationId: string,
     params: { userId?: string | null }
   ): Promise<Installation> {
+    if (this.config.browserAuth) throw new SDKError(ErrorCode.INVALID_CONFIG, 'Use verified login/logout with browser authentication');
     try {
       const response = await this.request(
-        `${this.config.apiBaseURL}/v1/installations/${installationId}`,
+        `${this.installationURL}/${installationId}`,
         {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Authorization': `Bearer ${this.bearer()}`,
           },
           body: JSON.stringify({
             user_id: params.userId,
@@ -100,18 +143,20 @@ export class APIClient {
   /**
    * Login user (POST /v1/installations/{id}/login)
    */
-  async loginUser(installationId: string, userId: string): Promise<void> {
+  async loginUser(installationId: string, userId: string, identityProof?: string): Promise<void> {
+    if (this.config.browserAuth && !identityProof) throw new SDKError(ErrorCode.VALIDATION_ERROR, 'Browser login requires a server identity proof');
     try {
       const response = await this.request(
-        `${this.config.apiBaseURL}/v1/installations/${installationId}/login`,
+        `${this.installationURL}/${installationId}/login`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Authorization': `Bearer ${this.bearer()}`,
           },
           body: JSON.stringify({
             external_user_id: userId,
+            identity_proof: identityProof,
           }),
         }
       );
@@ -138,12 +183,12 @@ export class APIClient {
   async logoutUser(installationId: string): Promise<void> {
     try {
       const response = await this.request(
-        `${this.config.apiBaseURL}/v1/installations/${installationId}/logout`,
+        `${this.installationURL}/${installationId}/logout`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Authorization': `Bearer ${this.bearer()}`,
           },
         }
       );
@@ -183,12 +228,12 @@ export class APIClient {
         body.keys = { p256dh: serialized.keys.p256dh, auth: serialized.keys.auth };
       }
       const response = await this.request(
-        `${this.config.apiBaseURL}/v1/installations/${installationId}/tokens`,
+        `${this.installationURL}/${installationId}/tokens`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Authorization': `Bearer ${this.bearer()}`,
           },
           body: JSON.stringify(body),
         }
@@ -222,11 +267,11 @@ export class APIClient {
   ): Promise<void> {
     try {
       const response = await this.request(
-        `${this.config.apiBaseURL}/v1/installations/${installationId}/subscriptions/${subscriptionId}`,
+        `${this.installationURL}/${installationId}/subscriptions/${subscriptionId}`,
         {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${this.config.apiKey}`,
+            'Authorization': `Bearer ${this.bearer()}`,
           },
         }
       );
@@ -242,6 +287,22 @@ export class APIClient {
         ErrorCode.NETWORK_ERROR,
         `Failed to delete subscription: ${String(error)}`
       );
+    }
+  }
+
+  async renewInstallationCredential(installationId: string): Promise<void> {
+    if (!this.config.browserAuth) throw new SDKError(ErrorCode.INVALID_CONFIG, 'Credential renewal requires browserAuth');
+    try {
+      const response = await this.request(`${this.installationURL}/${installationId}/credential/renew`, {
+        method: 'POST', headers: { Authorization: `Bearer ${this.bearer()}` },
+      });
+      if (!response.ok) await this.handleErrorResponse(response);
+      const data = await response.json();
+      if (data?.id !== installationId) throw new SDKError(ErrorCode.API_ERROR, 'Credential belongs to another installation');
+      this.saveCredential(data);
+    } catch (error) {
+      if (error instanceof SDKError) throw error;
+      throw new SDKError(ErrorCode.NETWORK_ERROR, 'Failed to renew installation credential');
     }
   }
 
@@ -269,7 +330,9 @@ export class APIClient {
       // An HTML/text error response still retains its HTTP status and SDK code.
     }
     if (response.status === 401 || response.status === 403) {
-      errorMessage = 'Authentication failed. Check your API key and scopes.';
+      errorMessage = this.config.browserAuth
+        ? 'Browser authentication failed. Check installation credential and allowed origin.'
+        : 'Authentication failed. Check your API key and scopes.';
     } else if (response.status >= 500) {
       errorMessage = 'Server error. Please try again later.';
     }

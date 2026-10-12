@@ -12,6 +12,8 @@
 | --- | --- |
 | `apiBaseURL` | Абсолютный HTTP(S) URL API/шлюза без query, fragment, userinfo. Без `/v1`; завершающий `/` удаляется SDK. |
 | `apiKey` | Bearer credential шлюза; прямой серверный API key допустим только в закрытом тестовом окружении. |
+| `browserAuth` | `true` включает `/v1/web/{apiKey}/installations` и обмен credentials; `apiKey` должен быть публичным `wbpub_` ключом. По умолчанию legacy API. |
+| `installationCredential` | Credential своей установки, выданная доверенным сервером сайта для recovery. Не проектный секрет; сервер проверяет её при регистрации. |
 | `applicationId` | UUID Web-приложения PushPilot. |
 | `vapidPublicKey` | Base64url, 65-байтный публичный P-256 ключ без padding. Обязателен для новой подписки. |
 | `environment` | `development` или `production`, по умолчанию `production`. |
@@ -26,12 +28,14 @@
 | `isSupported()` | `boolean`, доступен до инициализации; проверяет secure context и браузерные API. |
 | `initialize(config)` | `Promise<void>`, worker и Device Registry должны успешно зарегистрироваться; разрешение не запрашивается. При ошибке можно повторить. |
 | `getInstallationId()` | `Promise<string>`, стабильный локальный UUID устройства. Backend ID установки используется SDK для запросов и может отличаться. |
+| `getBackendInstallationId()` | `Promise<string>`, ID установки в backend для получения server identity proof. |
+| `renewInstallationCredential()` | `Promise<void>`, только browserAuth: заменяет действующую credential и сохраняет новую. Остальные вкладки должны обновить страницу. |
 | `requestPermission()` | `Promise<'granted' \| 'denied' \| 'default'>`, вызов из пользовательского жеста. |
 | `getPermissionStatus()` | Текущее разрешение браузера. |
 | `subscribe()` | `Promise<{endpoint, keys: {p256dh, auth}}>`, повторно использует подписку браузера и регистрирует её в API. |
 | `unsubscribe()` | `Promise<void>`, сначала удаление из API, затем в браузере; при API-ошибке локальная подписка сохраняется для повтора. |
 | `getSubscription()` | Подписка браузера или `null`; не подтверждает успешную регистрацию в API. |
-| `login(userId)` / `logout()` | Привязка / отвязка external user ID, `Promise<void>`. |
+| `login(userId, identityProof?)` / `logout()` | Привязка / отвязка external user ID, `Promise<void>`. В browserAuth login требует одноразовый proof сервера сайта. |
 | `onNotificationReceived(callback)` / `onNotificationClicked(callback)` | Возвращают функцию удаления callback; страница должна быть открыта и инициализирована. |
 
 При ручном удалении browser site data исчезают локальная идентичность и известный
@@ -44,6 +48,14 @@ endpoint. Отписка после reload использует сохранён
 уже удалённой подписки. ID очищается только после успешной локальной отписки.
 
 ## Существующий HTTP-контракт
+
+Таблица ниже относится к legacy API/шлюзу. В `browserAuth: true` SDK использует
+`/v1/web/{publicBrowserKey}/installations`, сначала Bearer public key, затем только
+Bearer credential installation. PATCH для user association не доступен: требуется
+verified login/logout. 401/403 сохраняются как `api_error`; credential не стирается
+и public key не используется для захвата существующей установки. 429 сохраняет
+HTTP status; API возвращает `Retry-After: 60`, автоматических повторов нет.
+[Серверный контракт](https://github.com/pushplatform/pushpilot-server/blob/feat/web-browser-auth/docs/WEB_BROWSER_AUTH.md).
 
 Каждый запрос содержит `Authorization: Bearer <apiKey>`. JSON-запросы также
 содержат `Content-Type: application/json`. Fetch имеет таймаут получения ответа
