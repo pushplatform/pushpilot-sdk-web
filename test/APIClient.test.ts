@@ -51,3 +51,17 @@ describe('APIClient Web Push subscription contract', () => {
       .rejects.toBeInstanceOf(SDKError);
   });
 });
+
+describe('APIClient release errors', () => {
+  beforeEach(() => vi.restoreAllMocks());
+  it('reports structured validation errors with HTTP context', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Invalid application' } }), { status: 400 }));
+    await expect(new APIClient(config).registerInstallation({ installationId: 'id', platform: 'web', environment: 'production' }))
+      .rejects.toMatchObject({ code: 'validation_error', message: 'Invalid application', context: { status: 400 } });
+  });
+  it('does not accept an installation response without an ID', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(new Response('null'));
+    await expect(new APIClient(config).registerInstallation({ installationId: 'id', platform: 'web', environment: 'production' }))
+      .rejects.toMatchObject({ code: 'api_error' });
+  });
+});

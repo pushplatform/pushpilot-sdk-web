@@ -58,6 +58,9 @@ export interface PushPlatformConfig {
    */
   serviceWorkerPath?: string;
 
+  /** Optional scope, limited by the worker location or Service-Worker-Allowed header. */
+  serviceWorkerScope?: string;
+
   /**
    * Enable debug logging (optional, default: false)
    */
@@ -202,6 +205,7 @@ export enum ErrorCode {
   ALREADY_INITIALIZED = 'already_initialized',
   NOT_INITIALIZED = 'not_initialized',
   INVALID_CONFIG = 'invalid_config',
+  INSECURE_CONTEXT = 'insecure_context',
 
   // Permission errors
   PERMISSION_DENIED = 'permission_denied',

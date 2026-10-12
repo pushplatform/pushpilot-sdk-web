@@ -49,3 +49,8 @@ playwright-report/
 .env.*.local
 
 .env.development
+
+example/vendor/
+*.tgz
+.artifacts/
+dist-example/

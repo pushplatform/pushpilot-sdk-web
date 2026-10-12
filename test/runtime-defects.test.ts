@@ -31,7 +31,10 @@ describe('Runtime Defects', () => {
     // Mock Service Worker and Push API
     Object.defineProperty(navigator, 'serviceWorker', {
       value: {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
         register: vi.fn().mockResolvedValue({
+          scope: window.location.origin + '/',
           active: { state: 'activated' },
           addEventListener: vi.fn(),
         }),
@@ -55,7 +58,7 @@ describe('Runtime Defects', () => {
       // Mock successful initialization
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ installationId: 'test-id' }),
+        json: async () => ({ id: 'backend-id' }),
       });
       global.fetch = mockFetch;
 
@@ -81,7 +84,7 @@ describe('Runtime Defects', () => {
     it('should return consistent value across multiple calls', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ installationId: 'test-id' }),
+        json: async () => ({ id: 'backend-id' }),
       });
       global.fetch = mockFetch;
 
@@ -172,7 +175,7 @@ describe('Runtime Defects', () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          installationId: mockInstallationId,
+          id: mockInstallationId,
           platform: 'web',
           environment: 'development',
         }),

@@ -26,7 +26,7 @@ export class APIClient {
     environment: string;
   }): Promise<Installation> {
     try {
-      const response = await fetch(`${this.config.apiBaseURL}/v1/installations`, {
+      const response = await this.request(`${this.config.apiBaseURL}/v1/installations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export class APIClient {
     params: { userId?: string | null }
   ): Promise<Installation> {
     try {
-      const response = await fetch(
+      const response = await this.request(
         `${this.config.apiBaseURL}/v1/installations/${installationId}`,
         {
           method: 'PATCH',
@@ -102,7 +102,7 @@ export class APIClient {
    */
   async loginUser(installationId: string, userId: string): Promise<void> {
     try {
-      const response = await fetch(
+      const response = await this.request(
         `${this.config.apiBaseURL}/v1/installations/${installationId}/login`,
         {
           method: 'POST',
@@ -137,7 +137,7 @@ export class APIClient {
    */
   async logoutUser(installationId: string): Promise<void> {
     try {
-      const response = await fetch(
+      const response = await this.request(
         `${this.config.apiBaseURL}/v1/installations/${installationId}/logout`,
         {
           method: 'POST',
@@ -182,7 +182,7 @@ export class APIClient {
         body.endpoint = subscription.endpoint;
         body.keys = { p256dh: serialized.keys.p256dh, auth: serialized.keys.auth };
       }
-      const response = await fetch(
+      const response = await this.request(
         `${this.config.apiBaseURL}/v1/installations/${installationId}/tokens`,
         {
           method: 'POST',
@@ -198,6 +198,9 @@ export class APIClient {
         await this.handleErrorResponse(response);
       }
       const data = await response.json();
+      if (typeof data?.subscription_id !== 'string' || !data.subscription_id.trim()) {
+        throw new SDKError(ErrorCode.API_ERROR, 'API response is missing subscription_id');
+      }
       return data.subscription_id;
     } catch (error) {
       if (error instanceof SDKError) {
@@ -218,7 +221,7 @@ export class APIClient {
     subscriptionId: string
   ): Promise<void> {
     try {
-      const response = await fetch(
+      const response = await this.request(
         `${this.config.apiBaseURL}/v1/installations/${installationId}/subscriptions/${subscriptionId}`,
         {
           method: 'DELETE',
@@ -242,32 +245,33 @@ export class APIClient {
     }
   }
 
+  private async request(url: string, options: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   /**
    * Handle error response from API
    */
   private async handleErrorResponse(response: Response): Promise<never> {
     let errorMessage = `API error: ${response.status}`;
-    let errorCode = ErrorCode.API_ERROR;
-
+    const errorCode = response.status === 400 ? ErrorCode.VALIDATION_ERROR : ErrorCode.API_ERROR;
     try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorData.error || errorMessage;
-
-      // Map specific API errors to SDK error codes
-      if (response.status === 401 || response.status === 403) {
-        errorCode = ErrorCode.API_ERROR;
-        errorMessage = 'Authentication failed. Check your API key.';
-      } else if (response.status === 404) {
-        errorCode = ErrorCode.API_ERROR;
-        errorMessage = 'Resource not found.';
-      } else if (response.status === 400) {
-        errorCode = ErrorCode.VALIDATION_ERROR;
-      } else if (response.status >= 500) {
-        errorCode = ErrorCode.API_ERROR;
-        errorMessage = 'Server error. Please try again later.';
-      }
+      const data = await response.json();
+      const message = data.message || data.error?.message || data.error;
+      if (typeof message === 'string') errorMessage = message;
     } catch {
-      // Failed to parse error response, use default message
+      // An HTML/text error response still retains its HTTP status and SDK code.
+    }
+    if (response.status === 401 || response.status === 403) {
+      errorMessage = 'Authentication failed. Check your API key and scopes.';
+    } else if (response.status >= 500) {
+      errorMessage = 'Server error. Please try again later.';
     }
 
     throw new SDKError(errorCode, errorMessage, {
@@ -280,6 +284,9 @@ export class APIClient {
    * Map API response to Installation type
    */
   private mapInstallation(data: any): Installation {
+    if (typeof (data?.id || data?.installation_id) !== 'string' || !(data.id || data.installation_id).trim()) {
+      throw new SDKError(ErrorCode.API_ERROR, 'API response is missing installation id');
+    }
     return {
       installationId: data.id || data.installation_id, // Backend returns 'id'
       userId: data.user_id || undefined,

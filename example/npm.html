@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PushPilot — Web Push</title>
+    <style>
+      body {
+        font: 16px system-ui;
+        max-width: 760px;
+        margin: 40px auto;
+        padding: 0 20px;
+        color: #182332;
+      }
+      label {
+        display: block;
+        margin: 12px 0;
+      }
+      input,
+      select {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 9px;
+      }
+      button {
+        padding: 10px 14px;
+        margin: 6px 4px 6px 0;
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: default;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        padding: 16px;
+        background: #f0f3f7;
+      }
+      .error {
+        color: #9b2020;
+      }
+      .success {
+        color: #166634;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PushPilot: уведомления сайта</h1>
+    <p>
+      Введите конфигурацию вашего приложения. Разрешение запрашивается только
+      кнопкой. Для публичного сайта используйте свой серверный шлюз: секретный
+      ключ PushPilot нельзя размещать в HTML.
+    </p>
+    <form id="config">
+      <label
+        >Адрес API или вашего шлюза
+        <input
+          name="apiBaseURL"
+          type="url"
+          required
+          placeholder="https://your-site.example/pushpilot"
+      /></label>
+      <label>Application ID <input name="applicationId" required /></label>
+      <label
+        >Ключ шлюза / тестовый API key
+        <input name="apiKey" type="password" autocomplete="off" required
+      /></label>
+      <label
+        >Публичный VAPID key <input name="vapidPublicKey" required
+      /></label>
+      <label
+        >Окружение
+        <select name="environment">
+          <option value="development">development</option>
+          <option value="production">production</option>
+        </select></label
+      >
+      <button id="btn-init" type="submit">Подключить PushPilot</button>
+    </form>
+    <p id="init-status" role="status">SDK не подключён</p>
+    <p>Installation ID: <span id="installation-id">—</span></p>
+    <p id="permission-status">Разрешение не запрошено</p>
+    <button id="btn-permission" disabled>Разрешить уведомления</button>
+    <button id="btn-subscribe" disabled>Подписаться</button>
+    <button id="btn-unsubscribe" disabled>Отписаться</button>
+    <p id="subscription-status">Подписки нет</p>
+    <button id="btn-preview" disabled>Показать локальное уведомление</button>
+    <p>
+      Локальное уведомление проверяет отображение и переход по нажатию. Доставка
+      через внешний push-сервис этим действием не проверяется.
+    </p>
+    <p id="error" role="alert" class="error"></p>
+    <pre id="events" aria-live="polite">
+События уведомлений появятся здесь.</pre>
+    <script type="module">
+      import * as sdk from "@pushplatform/web-sdk";
+      window.PushPilot = sdk;
+      await import("./main.js");
+    </script>
+  </body>
+</html>

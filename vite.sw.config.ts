@@ -1,6 +1,7 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import dts from 'vite-plugin-dts';
+import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
+import { resolve } from "path";
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
   build: {
@@ -8,12 +9,14 @@ export default defineConfig({
     // entrypoints in dist so the published files match package.json exports.
     emptyOutDir: false,
     lib: {
-      entry: resolve(__dirname, 'service-worker/index.ts'),
-      name: 'PushPlatformServiceWorker',
-      formats: ['es', 'cjs'],
+      entry: resolve(__dirname, "service-worker/index.ts"),
+      name: "PushPlatformServiceWorker",
+      // Classic importScripts shares the host worker's global lexical scope.
+      // Keep our bindings inside an IIFE, including minified names such as `t`.
+      formats: ["iife", "cjs"],
       fileName: (format) => {
-        if (format === 'es') return 'service-worker.js';
-        if (format === 'cjs') return 'service-worker.cjs';
+        if (format === "iife") return "service-worker.js";
+        if (format === "cjs") return "service-worker.cjs";
         return `service-worker.${format}.js`;
       },
     },
@@ -21,17 +24,11 @@ export default defineConfig({
       external: [],
     },
     sourcemap: true,
-    minify: 'terser',
+    minify: "terser",
     terserOptions: {
       compress: {
         drop_console: false,
       },
     },
   },
-  plugins: [
-    dts({
-      include: ['service-worker/**/*'],
-      outDir: 'dist',
-    }),
-  ],
 });

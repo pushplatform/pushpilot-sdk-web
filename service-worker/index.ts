@@ -1,111 +1,83 @@
-/**
- * @pushplatform/web-sdk
- *
- * Service Worker for Push Notifications
- */
-
+/** PushPilot notification handlers. Can be imported by an existing classic worker. */
 /// <reference lib="webworker" />
-
-// Cast self to ServiceWorkerGlobalScope
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-/**
- * Push event handler
- */
-sw.addEventListener('push', (event) => {
-  const pushEvent = event as PushEvent;
-  console.log('[Service Worker] Push event received', pushEvent);
-
-  if (!pushEvent.data) {
-    console.warn('[Service Worker] Push event has no data');
-    return;
-  }
-
+sw.addEventListener("push", (event) => {
+  let payload: Record<string, any> = {};
   try {
-    const data = pushEvent.data.json();
-
-    const notificationOptions: any = {
-      body: data.body || '',
-      icon: data.icon || '/icon.png',
-      badge: data.badge || '/badge.png',
-      data: data.data || {},
-      tag: data.tag,
-      requireInteraction: data.requireInteraction || false,
-    };
-
-    if (data.image) {
-      notificationOptions.image = data.image;
-    }
-
-    if (data.actions) {
-      notificationOptions.actions = data.actions;
-    }
-
-    const title = data.title || 'Notification';
-
-    pushEvent.waitUntil(
-      sw.registration.showNotification(title, notificationOptions)
-    );
-  } catch (error) {
-    console.error('[Service Worker] Failed to show notification', error);
+    payload = event.data?.json() || {};
+  } catch {
+    payload = { body: event.data?.text() || "" };
   }
-});
-
-/**
- * Notification click handler
- */
-sw.addEventListener('notificationclick', (event) => {
-  const notificationEvent = event as NotificationEvent;
-  console.log('[Service Worker] Notification clicked', notificationEvent);
-
-  notificationEvent.notification.close();
-
-  const notificationData = notificationEvent.notification.data || {};
-  const urlToOpen = notificationData.url || '/';
-
-  const notification = {
-    id: notificationData.id || crypto.randomUUID(),
-    title: notificationEvent.notification.title,
-    body: notificationEvent.notification.body,
-    icon: notificationEvent.notification.icon,
-    badge: notificationEvent.notification.badge,
-    data: notificationData,
-    tag: notificationEvent.notification.tag,
+  const data = payload.data || payload.custom_data || {};
+  const notification: Record<string, any> = {
+    ...payload,
+    id: payload.id || data.id || crypto.randomUUID(),
+    title: payload.title || "PushPilot",
+    data,
   };
-
-  notificationEvent.waitUntil(
-    sw.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Notify all clients about notification click
-      clientList.forEach((client) => {
-        client.postMessage({
-          type: 'NOTIFICATION_CLICKED',
-          notification,
-        });
+  const options = {
+    body: notification.body || "",
+    icon: notification.icon,
+    badge: notification.badge,
+    image: notification.image,
+    tag: notification.tag,
+    actions: notification.actions,
+    requireInteraction: notification.requireInteraction || false,
+    data: { ...data, __pushpilot: notification },
+  };
+  event.waitUntil(
+    (async () => {
+      await sw.registration.showNotification(notification.title, options);
+      const clients = await sw.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
       });
-
-      // Check if there's already a window open
-      for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
-        }
-      }
-
-      // Open a new window
-      if (sw.clients.openWindow) {
-        return sw.clients.openWindow(urlToOpen);
-      }
-      return undefined;
-    })
+      clients.forEach((client) =>
+        client.postMessage({ type: "NOTIFICATION_RECEIVED", notification }),
+      );
+    })(),
   );
 });
 
-/**
- * Service Worker activation
- */
-sw.addEventListener('activate', (event) => {
-  const activateEvent = event as ExtendableEvent;
-  console.log('[Service Worker] Activated');
-  activateEvent.waitUntil(sw.clients.claim());
+sw.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const notification = data.__pushpilot || {
+    id: data.id || crypto.randomUUID(),
+    title: event.notification.title,
+    body: event.notification.body,
+    data,
+  };
+  // Restrict navigation to the site's HTTP(S) URLs. Relative URLs resolve at the scope.
+  let target = new URL(sw.registration.scope);
+  try {
+    const candidate = new URL(notification.data?.url || "", target);
+    if (
+      candidate.origin === sw.location.origin &&
+      ["https:", "http:"].includes(candidate.protocol)
+    ) {
+      target = candidate;
+    }
+  } catch {
+    // Invalid URLs fall back to the worker scope.
+  }
+  event.waitUntil(
+    (async () => {
+      const clients = await sw.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      clients.forEach((client) =>
+        client.postMessage({ type: "NOTIFICATION_CLICKED", notification }),
+      );
+      const existing = clients.find((client) => client.url === target.href);
+      if (existing) await existing.focus();
+      else await sw.clients.openWindow(target.href);
+    })(),
+  );
 });
 
-console.log('[Service Worker] Loaded');
+sw.addEventListener("activate", (event) => {
+  event.waitUntil(sw.clients.claim());
+});

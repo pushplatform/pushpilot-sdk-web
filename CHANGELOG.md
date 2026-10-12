@@ -1,34 +1,26 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## Подготовлено к следующей публикации (0.1.0)
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- Установка npm: ESM, CommonJS и declarations для обоих форматов; сохранено имя
+  `@pushplatform/web-sdk`, добавлен алиас класса `PushPilot`.
+- Собранный `sdk.global.js` для обычного script tag без bundler.
+- Пример сайта на собранном пакете: явный запрос разрешения, подписка, отписка,
+  повтор ошибок API и локальное уведомление с переходом.
+- Явный service worker scope, таймаут активации, ошибки регистрации и API;
+  ID уведомления сохраняется до нажатия, события получения рассылаются страницам.
+- Classic worker собран как IIFE для импорта в существующий worker сайта
+  без конфликтов глобальных переменных.
+- Повтор отписки после локальной ошибки сохраняет ID и не создаёт заново
+  серверную подписку; состояние сохраняется при reload.
+- Русская документация с HTTP-контрактом и требованием серверного шлюза для
+  публичного сайта при текущей серверной схеме ключей.
+- Проверка настоящего tarball, чистого npm-потребителя и браузерных сценариев.
+- CI и ручной release workflow с выключенной по умолчанию публикацией.
+- Зависимости сборки/тестов обновлены; runtime-зависимостей нет.
 
-## [0.1.0] - 2026-09-21
+## 0.1.0 — исходная реализация (2026-09-21)
 
-### Added
-- Initial release of Web SDK
-- TypeScript SDK with full type safety
-- Installation ID generation and persistence
-- Configuration validation
-- Permission request flow
-- Service Worker template
-- Basic error handling
-- ESM and CJS builds
-
-### Known Limitations
-- Backend integration incomplete (login/logout/subscribe/unsubscribe)
-- Event listeners not implemented
-- Real Web Push requires backend VAPID endpoint
-
-## [Unreleased]
-
-### Planned
-- API Client implementation
-- Subscription Manager
-- Service Worker Manager
-- Event emitter for notifications
-- Full backend integration
-- Unit tests
-- Example application
+TypeScript SDK, установка устройства, разрешения, Web Push subscription lifecycle,
+service worker и Device Registry API. Этот раздел описывает историю исходников
+и не подтверждает публикацию в npm или внешнюю доставку.
