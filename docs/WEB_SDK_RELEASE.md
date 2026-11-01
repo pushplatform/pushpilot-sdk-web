@@ -1,3 +1,21 @@
+# Web SDK 0.2.0 — published 2026-11-01
+
+**Published and anonymously verified:** `@pushplatform/web-sdk@0.2.0`; npm `latest` points to 0.2.0.
+
+```sh
+npm install @pushplatform/web-sdk@0.2.0
+```
+
+The shared application-key contract supports one application across iOS/Android/Web and server code. The extractable key intentionally grants device registration/read and message send/history access only in that application, without organization/platform/billing administration. This explicit product decision replaces earlier gateway-only/device-key recommendations below. Legacy browser-proof mode remains compatible. Browser hardware kind stays unknown; locale/timezone/version/permission reflect actual SDK data.
+
+Merged PR #4; source release tag `v0.2.0` points to `7052d1969c8f713ceb476e4fda7c9fd2128d20af`. Published the previously checked 25-file candidate with `--ignore-scripts` after npm browser confirmation. The public archive is byte-identical and matches registry SHA-1/SHA-512 integrity. SHA-256: `9c0e7f8ff8fdb29227ebe70c58825c5d18b3beaefc63be5091df4dd8a248e0e1`.
+
+Before release, `release:check` passed: 91 unit tests, packed clean consumer validation and all 12 browser tests. Both Ubuntu CI runs passed after moving notification worker configuration to file scope and including explicitly scoped hidden artifacts. The existing built SDK also registered against the isolated real API/origin policy during console acceptance. No real push was sent and those checks were not repeated for publication. Actual Web Push requires VAPID, an allowed origin, a Service Worker and browser permission.
+
+---
+
+Historical release records follow; their earlier publication/authentication status describes the date of that work.
+
 # Подготовка релиза Web SDK PushPilot
 
 Ветка: `feat/web-sdk-release`. Исходная точка: `960c2ed`.

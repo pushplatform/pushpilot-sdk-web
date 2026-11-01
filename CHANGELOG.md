@@ -1,3 +1,8 @@
+# 0.3.0 — 2026-11-01
+
+- `initialize` takes an application id or `{applicationId, url, environment}`. No API key. The default address is https://api.pushpilot.ru.
+- A foreground notification can be prevented, and the push subscription endpoint is emitted as the device token.
+
 # 0.2.0 — 2026-11-01
 
 - Unified application ID and permanent shared application key for SDK and server; no project/environment setup step.

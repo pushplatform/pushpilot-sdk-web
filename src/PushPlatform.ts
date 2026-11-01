@@ -61,13 +61,13 @@ export class PushPlatform {
    * });
    * ```
    */
-  static async initialize(config: PushPlatformConfig): Promise<void> {
-    if (PushPlatform.initializing) {
-      throw new SDKError(ErrorCode.ALREADY_INITIALIZED, 'PushPlatform initialization in progress');
-    }
+  static async initialize(config: string | PushPlatformConfig): Promise<void> {
+    if (PushPlatform.initialized) return;
+    if (PushPlatform.initializing) return;
+    const normalized: PushPlatformConfig = typeof config === 'string' ? { applicationId: config } : config;
     PushPlatform.initializing = true;
     try {
-      await PushPlatform.initializeInternal(config);
+      await PushPlatform.initializeInternal(normalized);
     } finally {
       PushPlatform.initializing = false;
     }
@@ -82,14 +82,8 @@ export class PushPlatform {
 
   private static async initializeInternal(config: PushPlatformConfig): Promise<void> {
     // Check if already initialized
-    if (PushPlatform.initialized) {
-      throw new SDKError(
-        ErrorCode.ALREADY_INITIALIZED,
-        'PushPlatform already initialized'
-      );
-    }
+    if (PushPlatform.initialized) return;
 
-    // Validate configuration
     PushPlatform.validateConfig(config);
 
     // Check Service Worker support
@@ -113,10 +107,13 @@ export class PushPlatform {
     }
 
     // Store configuration
+    const explicitURL = config.url || config.apiBaseURL;
+    const apiBaseURL = (explicitURL || 'https://api.pushpilot.ru').replace(/\/+$/, '');
+    const environment = config.environment || (explicitURL ? 'development' : undefined);
     PushPlatform.config = {
       ...config,
-      apiBaseURL: config.apiBaseURL.replace(/\/+$/, ''),
-      environment: config.environment || 'production',
+      apiBaseURL,
+      environment,
       serviceWorkerPath: config.serviceWorkerPath || '/service-worker.js',
       debugMode: config.debugMode ?? false,
     };
@@ -144,13 +141,11 @@ export class PushPlatform {
     PushPlatform.currentInstallationId = installationId;
     PushPlatform.currentSubscriptionId = localStorage.getItem(PushPlatform.subscriptionIdStorageKey);
 
-    // Register installation with backend
-    const environment = PushPlatform.config.environment || 'production';
     try {
       const registeredInstallation = await PushPlatform.apiClient.registerInstallation({
         installationId,
         platform: 'web',
-        environment,
+        environment: PushPlatform.config.environment || '',
       });
 
       // Use the installation ID returned from backend (the actual database ID)
@@ -427,6 +422,7 @@ export class PushPlatform {
 
       // Serialize and return
       const subscription = PushPlatform.subscriptionManager.serializeSubscription(pushSubscription);
+      PushPlatform.eventEmitter.emit('pushToken', subscription.endpoint);
 
       if (PushPlatform.config?.debugMode) {
         console.log('[PushPlatform] Subscribed', { endpoint: subscription.endpoint });
@@ -589,7 +585,10 @@ export class PushPlatform {
       const { type, notification } = event.data || {};
       if (!notification || typeof notification !== 'object') return;
 
-      if (type === 'NOTIFICATION_RECEIVED') {
+      if (type === 'NOTIFICATION_WILL_DISPLAY') {
+        const event = { notification, preventDefault() { navigator.serviceWorker.controller?.postMessage({ type: 'PREVENT_DEFAULT' }); } };
+        PushPlatform.eventEmitter.emit('notificationWillDisplay', event);
+      } else if (type === 'NOTIFICATION_RECEIVED') {
         PushPlatform.eventEmitter.emit('notificationReceived', notification);
       } else if (type === 'NOTIFICATION_CLICKED') {
         PushPlatform.eventEmitter.emit('notificationClicked', notification);
@@ -611,25 +610,19 @@ export class PushPlatform {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'Configuration is required');
     }
 
-    if (!config.apiKey || typeof config.apiKey !== 'string') {
-      throw new SDKError(ErrorCode.INVALID_CONFIG, 'API key is required');
-    }
-
     if (!config.applicationId || typeof config.applicationId !== 'string') {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'Application ID is required');
     }
 
-    if (!config.apiBaseURL || typeof config.apiBaseURL !== 'string') {
-      throw new SDKError(ErrorCode.INVALID_CONFIG, 'API base URL is required');
-    }
+    const baseURL = config.url || config.apiBaseURL || 'https://api.pushpilot.ru';
 
-    if (config.browserAuth && !/^wbpub_[A-Za-z0-9_-]{6,80}$/.test(config.apiKey)) {
+    if (config.browserAuth && !/^wbpub_[A-Za-z0-9_-]{6,80}$/.test(config.apiKey || '')) {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'browserAuth requires a public wbpub_ browser key');
     }
 
     // Validate URL format
     try {
-      const url = new URL(config.apiBaseURL);
+      const url = new URL(baseURL);
       if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
         throw new Error('Expected an HTTP(S) base URL without credentials, query or fragment');
       }
