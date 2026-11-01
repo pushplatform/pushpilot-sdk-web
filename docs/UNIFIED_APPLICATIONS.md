@@ -11,3 +11,7 @@ Console acceptance uses a disposable postgres database and real queue/worker wit
 ## Publication verified on 2026-11-01
 
 Web 0.2.0 is prepared and locally validated, **not yet published to npm**: `npm whoami` returns 401 and the publish request was rejected. Publishing requires an account with package access. [PR #4](https://github.com/pushplatform/pushpilot-sdk-web/pull/4).
+
+## CI follow-up, 2026-11-01
+
+The Ubuntu workflow exposed a Playwright collection error: worker-scoped `headless` cannot be set inside `test.describe`. The OS notification test now lives in its own spec with file-level configuration; shared browser fixtures were extracted without changing assertions. Eleven runtime tests remain headless, while the notification test uses a window only on macOS. Both artifact uploads explicitly include their enumerated `.artifacts` files. Local `npm run release:check` passed: 91 unit tests, package/clean consumer validation and all 12 browser tests. This changes only test/CI configuration, not published runtime behavior.

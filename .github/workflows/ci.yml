@@ -20,6 +20,7 @@ jobs:
         if: always()
         with:
           name: web-sdk-checks
+          include-hidden-files: true
           path: |
             .artifacts/*.tgz
             .artifacts/pack-report.json
