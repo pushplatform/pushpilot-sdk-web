@@ -43,6 +43,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: npm-release
+          include-hidden-files: true
           path: |
             .artifacts/*.tgz
             .artifacts/pack-report.json
