@@ -44,12 +44,12 @@ export class EventEmitter {
   /**
    * Emit event to all listeners
    */
-  emit(event: EventType, notification: PushNotification): void {
+  emit(event: EventType, notification: unknown): void {
     const callbacks = this.listeners.get(event);
     if (callbacks) {
       callbacks.forEach((callback) => {
         try {
-          callback(notification);
+          callback(notification as PushNotification);
         } catch (error) {
           console.error(`[EventEmitter] Error in ${event} listener:`, error);
         }
