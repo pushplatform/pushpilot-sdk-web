@@ -10,7 +10,7 @@ Console acceptance uses a disposable postgres database and real queue/worker wit
 
 ## Publication verified on 2026-11-01
 
-Web 0.2.0 is prepared and locally validated, **not yet published to npm**: `npm whoami` returns 401 and the publish request was rejected. Publishing requires an account with package access. [PR #4](https://github.com/pushplatform/pushpilot-sdk-web/pull/4).
+Web 0.2.0 is published to npm; `latest` points to 0.2.0. The public tarball was downloaded anonymously and is byte-for-byte identical to the previously validated 25-file candidate. Registry SHA-1/SHA-512 integrity matches. SHA-256: `9c0e7f8ff8fdb29227ebe70c58825c5d18b3beaefc63be5091df4dd8a248e0e1`. Source tag `v0.2.0` points to merged main `7052d1969c8f713ceb476e4fda7c9fd2128d20af`. The existing candidate was published with `--ignore-scripts` after npm browser confirmation; tests/builds were not repeated for publication. [PR #4](https://github.com/pushplatform/pushpilot-sdk-web/pull/4).
 
 ## CI follow-up, 2026-11-01
 
