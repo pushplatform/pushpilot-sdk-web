@@ -39,7 +39,7 @@ export class APIClient {
   }
 
   private bearer(registration = false): string {
-    if (!this.config.browserAuth) return this.config.apiKey;
+    if (!this.config.browserAuth) return this.config.apiKey || '';
     if (this.installationCredential) return this.installationCredential;
     if (registration) return this.config.apiKey;
     throw new SDKError(ErrorCode.NOT_INITIALIZED, 'Browser installation credential is required');
@@ -77,7 +77,7 @@ export class APIClient {
           device_id: params.installationId, // Use installation ID as device ID for web
           application_id: this.config.applicationId,
           platform: params.platform,
-          environment: params.environment,
+          ...(params.environment ? { environment: params.environment } : {}),
           device_kind: 'unknown',
           locale: typeof navigator !== 'undefined' ? navigator.language || undefined : undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
@@ -316,7 +316,11 @@ export class APIClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
-      return await fetch(url, { ...options, signal: controller.signal });
+      const headers = { ...(options.headers as Record<string, string> | undefined) };
+      if (!headers.Authorization || headers.Authorization === 'Bearer ' || headers.Authorization === 'Bearer undefined') {
+        delete headers.Authorization;
+      }
+      return await fetch(url, { ...options, headers, signal: controller.signal });
     } finally {
       clearTimeout(timer);
     }

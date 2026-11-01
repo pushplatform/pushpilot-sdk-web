@@ -28,11 +28,25 @@ sw.addEventListener("push", (event) => {
   };
   event.waitUntil(
     (async () => {
-      await sw.registration.showNotification(notification.title, options);
       const clients = await sw.clients.matchAll({
         type: "window",
         includeUncontrolled: true,
       });
+      const prevented = await new Promise<boolean>((resolve) => {
+        const schedule = (globalThis as { setTimeout?: (fn: () => void, ms: number) => number }).setTimeout;
+        const timer = schedule ? schedule(() => resolve(false), 100) : (resolve(false), 0);
+        const onMessage = (message: ExtendableMessageEvent) => {
+          if (message.data?.type !== "PREVENT_DEFAULT") return;
+          (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(timer);
+          sw.removeEventListener("message", onMessage);
+          resolve(true);
+        };
+        sw.addEventListener("message", onMessage);
+        clients.forEach((client) =>
+          client.postMessage({ type: "NOTIFICATION_WILL_DISPLAY", notification }),
+        );
+      });
+      if (!prevented) await sw.registration.showNotification(notification.title, options);
       clients.forEach((client) =>
         client.postMessage({ type: "NOTIFICATION_RECEIVED", notification }),
       );

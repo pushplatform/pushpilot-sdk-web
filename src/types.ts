@@ -33,7 +33,7 @@ export interface PushPlatformConfig {
   /**
    * Shared application key, also used by native SDKs and your server. It is extractable and grants sending access to this application.
    */
-  apiKey: string;
+  apiKey?: string;
 
   /** Optional real host-application version, supplied by your build. */
   appVersion?: string;
@@ -50,9 +50,14 @@ export interface PushPlatformConfig {
   applicationId: string;
 
   /**
-   * Base URL for backend API
+   * Server address. Omitted requests use https://api.pushpilot.ru.
    */
-  apiBaseURL: string;
+  url?: string;
+
+  /**
+   * @deprecated Use url.
+   */
+  apiBaseURL?: string;
 
   /** Web Push VAPID application server public key (base64url, 65-byte uncompressed P-256 key). */
   vapidPublicKey?: string;

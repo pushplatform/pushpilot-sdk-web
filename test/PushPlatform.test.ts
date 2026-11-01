@@ -75,13 +75,9 @@ describe('PushPlatform', () => {
       await expect(PushPlatform.initialize(validConfig)).resolves.toBeUndefined();
     });
 
-    it('should throw error if already initialized', async () => {
+    it('returns success when initialize is called again', async () => {
       await PushPlatform.initialize(validConfig);
-
-      await expect(PushPlatform.initialize(validConfig)).rejects.toThrow(SDKError);
-      await expect(PushPlatform.initialize(validConfig)).rejects.toMatchObject({
-        code: ErrorCode.ALREADY_INITIALIZED,
-      });
+      await expect(PushPlatform.initialize(validConfig)).resolves.toBeUndefined();
     });
 
     it('should throw error if config is missing', async () => {
@@ -91,14 +87,8 @@ describe('PushPlatform', () => {
       });
     });
 
-    it('should throw error if apiKey is missing', async () => {
-      const invalidConfig = { ...validConfig, apiKey: '' };
-
-      await expect(PushPlatform.initialize(invalidConfig)).rejects.toThrow(SDKError);
-      await expect(PushPlatform.initialize(invalidConfig)).rejects.toMatchObject({
-        code: ErrorCode.INVALID_CONFIG,
-        message: expect.stringContaining('API key'),
-      });
+    it('does not require an API key', async () => {
+      await expect(PushPlatform.initialize({ ...validConfig, apiKey: '' })).resolves.toBeUndefined();
     });
 
     it('should throw error if applicationId is missing', async () => {
@@ -111,14 +101,10 @@ describe('PushPlatform', () => {
       });
     });
 
-    it('should throw error if apiBaseURL is missing', async () => {
-      const invalidConfig = { ...validConfig, apiBaseURL: '' };
-
-      await expect(PushPlatform.initialize(invalidConfig)).rejects.toThrow(SDKError);
-      await expect(PushPlatform.initialize(invalidConfig)).rejects.toMatchObject({
-        code: ErrorCode.INVALID_CONFIG,
-        message: expect.stringContaining('API base URL'),
-      });
+    it('uses the public API when url is omitted', async () => {
+      await PushPlatform.initialize({ applicationId: validConfig.applicationId });
+      expect((PushPlatform as any).config.apiBaseURL).toBe('https://api.pushpilot.ru');
+      expect((PushPlatform as any).config.environment).toBeUndefined();
     });
 
     it('should throw error if apiBaseURL is invalid', async () => {
@@ -151,7 +137,7 @@ describe('PushPlatform', () => {
       await PushPlatform.initialize(configWithoutEnv);
 
       const config = (PushPlatform as any).config;
-      expect(config.environment).toBe('production');
+      expect(config.environment).toBe('development');
     });
 
     it('should default serviceWorkerPath to /service-worker.js', async () => {
