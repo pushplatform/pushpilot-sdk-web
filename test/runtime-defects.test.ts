@@ -78,7 +78,8 @@ describe('Runtime Defects', () => {
       // Should resolve to a string
       const installationId = await result;
       expect(typeof installationId).toBe('string');
-      expect(installationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      expect(installationId).toBe('backend-id');
+      expect(installationId).not.toBe(StorageManager.getInstallationId());
     });
 
     it('should return consistent value across multiple calls', async () => {

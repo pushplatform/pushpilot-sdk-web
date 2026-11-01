@@ -1,3 +1,10 @@
+# 0.2.0 — 2026-11-01
+
+- Unified application ID and permanent shared application key for SDK and server; no project/environment setup step.
+- Actual device kind, language, time zone, OS/SDK/app version and notification permission metadata. Unknown facts stay unknown.
+- Optional legacy environment compatibility; iOS defaults to build-entitlement APNs transport detection.
+- Test subscription remains a separate console marker.
+
 # Changelog
 
 ## 0.1.1

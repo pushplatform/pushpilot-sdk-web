@@ -7,7 +7,7 @@ PushPilot подключает Web Push к вашему сайту: запраш
 ## Установка
 
 ```sh
-npm install @pushplatform/web-sdk@next
+npm install @pushplatform/web-sdk@0.2.0
 ```
 
 ```js
@@ -22,14 +22,12 @@ Runtime-зависимостей нет.
 Для подключения нужны:
 
 - HTTPS URL API PushPilot, без `/v1` в конце.
-- UUID Web-приложения, окружение `production` или `development` и публичный
-  browser key вида `wbpub_…` для этого приложения и окружения.
-- Разрешённый origin сайта в настройке browser API, например `https://shop.example`.
-- VAPID public key того же приложения и окружения: base64url, публичный P-256 ключ.
-  Private VAPID key и проектный API key остаются на сервере.
+- UUID приложения PushPilot — того же, что для iOS/Android.
+- Общий бессрочный ключ приложения из консоли. Он намеренно извлекаем из JavaScript и разрешает регистрацию устройств и отправку в этом приложении.
+- Разрешённый origin сайта в настройках Web Push, например `https://shop.example`.
+- VAPID public key этого приложения. Private VAPID key и APNs/FCM credentials остаются на сервере.
 
-Параметры browser API задаёт администратор вашего сервера PushPilot.
-[Серверная настройка](https://github.com/pushplatform/pushpilot-server/blob/main/docs/WEB_BROWSER_AUTH.md).
+Настройки находятся в приложении → Web Push. Проект и окружение выбирать не нужно. Отдельный шлюз не требуется.
 
 Разместите worker на своём сайте. Для проекта с публичной директорией `public`:
 
@@ -98,9 +96,7 @@ async function start() {
     await PushPilot.initialize({
       apiBaseURL: 'https://api.example.com',
       applicationId: 'YOUR_APPLICATION_UUID',
-      apiKey: 'wbpub_your_site',
-      browserAuth: true,
-      environment: 'production',
+      apiKey: 'APPLICATION_KEY',
       vapidPublicKey: 'YOUR_PUBLIC_VAPID_KEY',
       serviceWorkerPath: '/pushpilot-sw.js',
       serviceWorkerScope: '/',
@@ -187,8 +183,8 @@ URL заменяется адресом scope. `custom_data.url` также по
 - На iOS/iPadOS 16.4+ Web Push доступен веб-приложениям, добавленным на домашний
   экран. [Условия WebKit](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
 - Нужен доступный `localStorage`. Один экземпляр SDK использует одно приложение
-  и окружение на странице; не переключайте их после инициализации.
-- Browser credential действует 7 суток. `renewInstallationCredential()` заменяет
+  на странице; не переключайте их после инициализации.
+- Только в прежнем режиме `browserAuth: true`: browser credential действует 7 суток. `renewInstallationCredential()` заменяет
   действующую credential. Для восстановления просроченной или утраченной credential
   и для `login(userId, identityProof)` нужен доверенный сервер вашего сайта.
   [Конфигурация и методы](https://github.com/pushplatform/pushpilot-sdk-web/blob/main/docs/API.md).
@@ -203,12 +199,9 @@ URL заменяется адресом scope. `custom_data.url` также по
 Также доступны именованный экспорт `PushPlatform` и default export. Для нового
 кода используйте `PushPilot`.
 
-При `browserAuth: false` (значение по умолчанию) SDK использует legacy Device
-Registry `/v1/installations`. Для публичного сайта этот режим требует вашего
-серверного шлюза: он хранит проектный ключ, проверяет владение установкой и
-выдаёт браузеру собственную credential. В конфигурации SDK укажите URL шлюза
-и его credential. Проектный ключ `devices:write` нельзя размещать в HTML, JS,
-public env или CDN. [HTTP-контракт совместимости](https://github.com/pushplatform/pushpilot-sdk-web/blob/main/docs/API.md#совместимость-с-legacy-api).
+По умолчанию SDK обращается к `/v1/installations` с общим ключом приложения. Один ID и ключ используются на сайте, iOS, Android и сервере. У ключа нет срока действия; отзыв/перевыпуск доступны в консоли. Ключ не даёт административных прав и доступа к другим приложениям.
+
+Прежний режим `browserAuth: true` с `wbpub_`/installation proof сохранён для совместимости существующих сайтов. Он не нужен для новой модели общего ключа. Его истечение/renew/identityProof относятся только к этому legacy-режиму.
 
 ## Документация
 

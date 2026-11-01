@@ -65,3 +65,21 @@ describe('APIClient release errors', () => {
       .rejects.toMatchObject({ code: 'api_error' });
   });
 });
+
+
+describe('Unified application metadata', () => {
+  it('reports unknown device kind, actual locale/timezone and permission without inventing hardware', async () => {
+    vi.restoreAllMocks();
+    vi.stubGlobal('navigator', { language: 'ru-RU' });
+    vi.stubGlobal('Notification', { permission: 'denied' });
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ installation_id: 'backend-installation' }), { status: 201 }));
+    try {
+      await new APIClient({ ...config, appVersion: '2.7' }).registerInstallation({ installationId: 'persistent-device', platform: 'web', environment: 'production' });
+      const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+      expect(body).toMatchObject({ application_id: 'app', device_id: 'persistent-device', device_kind: 'unknown', locale: 'ru-RU', notification_permission: 'denied', app_version: '2.7', sdk_version: '0.2.0' });
+      expect(body.timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+      expect(body.device_model).toBeUndefined();
+      expect(body.os_version).toBeUndefined();
+    } finally { vi.unstubAllGlobals(); vi.restoreAllMocks(); }
+  });
+});

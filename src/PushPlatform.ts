@@ -200,7 +200,8 @@ export class PushPlatform {
     PushPlatform.ensureInitialized();
 
     try {
-      const installationId = StorageManager.getInstallationId();
+      const installationId = PushPlatform.currentInstallationId;
+      if (!installationId) throw new SDKError(ErrorCode.NOT_INITIALIZED, 'Backend installation is not registered');
       if (PushPlatform.config?.debugMode) {
         console.log('[PushPlatform] Installation ID retrieved', { installationId });
       }
@@ -267,6 +268,17 @@ export class PushPlatform {
     PushPlatform.ensureInitialized();
     if (!PushPlatform.currentInstallationId) throw new SDKError(ErrorCode.NOT_INITIALIZED, 'Installation is not registered');
     return PushPlatform.currentInstallationId;
+  }
+
+  /** Refresh available browser metadata. Hardware/emulator detection is not reliable on Web. */
+  static async refreshMetadata(): Promise<void> {
+    PushPlatform.ensureInitialized();
+    if (!PushPlatform.apiClient || !PushPlatform.config) throw new SDKError(ErrorCode.NOT_INITIALIZED, 'API client not initialized');
+    const installation = await PushPlatform.apiClient.registerInstallation({
+      installationId: StorageManager.getInstallationId(), platform: 'web',
+      environment: PushPlatform.config.environment || 'production',
+    });
+    PushPlatform.currentInstallationId = installation.installationId;
   }
 
   static async renewInstallationCredential(): Promise<void> {
@@ -337,6 +349,7 @@ export class PushPlatform {
 
     try {
       const result = await Notification.requestPermission();
+      if (!PushPlatform.config?.browserAuth) void PushPlatform.refreshMetadata().catch(() => undefined);
       if (PushPlatform.config?.debugMode) {
         console.log('[PushPlatform] Permission status:', result);
       }
@@ -401,6 +414,7 @@ export class PushPlatform {
     }
 
     try {
+      if (!PushPlatform.config?.browserAuth) await PushPlatform.refreshMetadata();
       // Subscribe via browser Push API
       const pushSubscription = await PushPlatform.subscriptionManager.subscribe();
 

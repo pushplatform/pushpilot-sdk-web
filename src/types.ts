@@ -31,9 +31,12 @@ export interface JSONArray extends Array<JSONValue> {}
  */
 export interface PushPlatformConfig {
   /**
-   * API key for backend authentication
+   * Shared application key, also used by native SDKs and your server. It is extractable and grants sending access to this application.
    */
   apiKey: string;
+
+  /** Optional real host-application version, supplied by your build. */
+  appVersion?: string;
 
   /** Use public wbpub_ identifier and installation credentials on /v1/web routes. */
   browserAuth?: boolean;

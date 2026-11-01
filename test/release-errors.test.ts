@@ -75,13 +75,16 @@ describe("Release error handling", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
   it("preserves denied permission and never subscribes implicitly", async () => {
+    Notification.permission = "denied";
     await PushPlatform.initialize(config);
     expect(await PushPlatform.requestPermission()).toBe("denied");
     Notification.permission = "denied";
     await expect(PushPlatform.subscribe()).rejects.toMatchObject({
       code: ErrorCode.PERMISSION_DENIED,
     });
-    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect((fetch as any).mock.calls.every((call: any[]) => String(call[0]).endsWith('/v1/installations'))).toBe(true);
+    expect(JSON.parse((fetch as any).mock.calls[1][1].body).notification_permission).toBe('denied');
   });
   it("rejects a page outside the worker scope without waiting for ready", async () => {
     registration.scope = window.location.origin + "/elsewhere/";

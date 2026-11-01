@@ -328,6 +328,11 @@ test("packed worker import preserves host lexical bindings and installs push han
   });
 });
 
+// macOS headless Chromium resolves showNotification without retaining an OS
+// notification. Use a real window for this OS-dependent assertion, keeping all
+// notification visibility and click assertions unchanged.
+test.describe('OS notification display', () => {
+  test.use({ headless: process.platform !== 'darwin' });
 test("real worker displays a local notification and handles synthetic push/click events", async ({
   page,
   context,
@@ -396,4 +401,6 @@ test("real worker displays a local notification and handles synthetic push/click
   });
   await expect(page.locator("#events")).toContainText("Нажатие");
   await expect(page.locator("#events")).toContainText("fixture-notification");
+});
+
 });
