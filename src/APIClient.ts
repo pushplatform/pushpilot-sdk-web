@@ -18,7 +18,7 @@ export class APIClient {
   constructor(config: PushPlatformConfig) {
     this.config = config;
     this.credentialStorageKey = 'pushpilot_web_credential:' + JSON.stringify([
-      config.apiBaseURL.replace(/\/+$/, ''), config.applicationId, config.environment || 'production', config.apiKey,
+      (config.apiBaseURL || '').replace(/\/+$/, ''), config.applicationId, config.environment || 'production', config.apiKey || '',
     ]);
     if (config.browserAuth) {
       if (config.installationCredential) {
@@ -32,16 +32,16 @@ export class APIClient {
   }
 
   private get installationURL(): string {
-    const base = this.config.apiBaseURL.replace(/\/+$/, '');
+    const base = (this.config.apiBaseURL || '').replace(/\/+$/, '');
     return this.config.browserAuth
-      ? `${base}/v1/web/${encodeURIComponent(this.config.apiKey)}/installations`
+      ? `${base}/v1/web/${encodeURIComponent(this.config.apiKey || '')}/installations`
       : `${base}/v1/installations`;
   }
 
   private bearer(registration = false): string {
     if (!this.config.browserAuth) return this.config.apiKey || '';
     if (this.installationCredential) return this.installationCredential;
-    if (registration) return this.config.apiKey;
+    if (registration) return this.config.apiKey || '';
     throw new SDKError(ErrorCode.NOT_INITIALIZED, 'Browser installation credential is required');
   }
 

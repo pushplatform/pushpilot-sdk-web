@@ -6,7 +6,7 @@
 
 import type { PushNotification } from './types';
 
-type EventType = 'notificationReceived' | 'notificationClicked';
+type EventType = 'notificationReceived' | 'notificationClicked' | 'notificationWillDisplay' | 'pushToken';
 type EventCallback = (notification: PushNotification) => void;
 
 /**

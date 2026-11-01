@@ -616,7 +616,7 @@ export class PushPlatform {
 
     const baseURL = config.url || config.apiBaseURL || 'https://api.pushpilot.ru';
 
-    if (config.browserAuth && !/^wbpub_[A-Za-z0-9_-]{6,80}$/.test(config.apiKey)) {
+    if (config.browserAuth && !/^wbpub_[A-Za-z0-9_-]{6,80}$/.test(config.apiKey || '')) {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'browserAuth requires a public wbpub_ browser key');
     }
 
