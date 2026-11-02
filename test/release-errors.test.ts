@@ -6,7 +6,7 @@ import { SubscriptionManager } from "../src/SubscriptionManager";
 const config = {
   apiKey: "demo",
   applicationId: "app",
-  apiBaseURL: "https://api.example",
+  url: "https://api.example",
 };
 let registration: any;
 beforeEach(() => {

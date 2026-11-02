@@ -7,7 +7,8 @@
 import type { PushNotification } from './types';
 
 type EventType = 'notificationReceived' | 'notificationClicked' | 'notificationWillDisplay' | 'pushToken';
-type EventCallback = (notification: PushNotification) => void;
+type EventCallback = (payload: any) => void;
+type DisplayEvent = { notification: PushNotification; preventDefault(): void };
 
 /**
  * Event Emitter for SDK events
@@ -18,6 +19,9 @@ export class EventEmitter {
   /**
    * Add event listener
    */
+  on(event: 'notificationReceived' | 'notificationClicked', callback: (notification: PushNotification) => void): () => void;
+  on(event: 'notificationWillDisplay', callback: (event: DisplayEvent) => void): () => void;
+  on(event: 'pushToken', callback: (token: string) => void): () => void;
   on(event: EventType, callback: EventCallback): () => void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());

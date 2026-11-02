@@ -1,3 +1,8 @@
+# 0.3.1 — 2026-11-02
+
+- Публичные `onNotificationWillDisplay` и `onPushToken`. Если подписка уже есть, `onPushToken` сразу получает текущий endpoint.
+- Адрес только `url`. `apiBaseURL` без `url` — ошибка. `apiKey` не отправляется, кроме `browserAuth` с ключом `wbpub_`.
+
 # 0.3.0 — 2026-11-01
 
 - `initialize` takes an application id or `{applicationId, url, environment}`. No API key. The default address is https://api.pushpilot.ru.

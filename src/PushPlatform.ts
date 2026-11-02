@@ -29,6 +29,16 @@ import { EventEmitter } from './EventEmitter';
  * - HTTPS (or localhost for development)
  * - Web Push API support
  */
+export function settleWillDisplay(deliver: (preventDefault: () => void) => void): boolean {
+  let prevented = false;
+  let settled = false;
+  deliver(() => {
+    if (!settled) prevented = true;
+  });
+  settled = true;
+  return prevented;
+}
+
 export class PushPlatform {
   private static readonly subscriptionIdStorageKey = 'pushplatform_subscription_id';
   private static initialized = false;
@@ -53,9 +63,8 @@ export class PushPlatform {
    * @example
    * ```typescript
    * await PushPlatform.initialize({
-   *   apiKey: 'your-api-key',
    *   applicationId: 'app-uuid',
-   *   apiBaseURL: 'https://api.pushplatform.com',
+   *   url: 'https://api.pushplatform.com',
    *   environment: 'production',
    *   debugMode: false,
    * });
@@ -107,11 +116,12 @@ export class PushPlatform {
     }
 
     // Store configuration
-    const explicitURL = config.url || config.apiBaseURL;
-    const apiBaseURL = (explicitURL || 'https://api.pushpilot.ru').replace(/\/+$/, '');
-    const environment = config.environment || (explicitURL ? 'development' : undefined);
+    const apiBaseURL = (config.url || 'https://api.pushpilot.ru').replace(/\/+$/, '');
+    const environment = config.environment || (config.url ? 'development' : undefined);
     PushPlatform.config = {
       ...config,
+      apiKey: config.browserAuth ? config.apiKey : undefined,
+      url: config.url || apiBaseURL,
       apiBaseURL,
       environment,
       serviceWorkerPath: config.serviceWorkerPath || '/service-worker.js',
@@ -564,6 +574,22 @@ export class PushPlatform {
    * });
    * ```
    */
+  static onNotificationWillDisplay(
+    callback: (event: { notification: PushNotification; preventDefault(): void }) => void
+  ): UnsubscribeFn {
+    PushPlatform.ensureInitialized();
+    return PushPlatform.eventEmitter.on('notificationWillDisplay', callback);
+  }
+
+  static onPushToken(callback: (token: string) => void): UnsubscribeFn {
+    PushPlatform.ensureInitialized();
+    const unsubscribe = PushPlatform.eventEmitter.on('pushToken', callback);
+    void PushPlatform.subscriptionManager?.getSubscription().then((subscription) => {
+      if (subscription?.endpoint) callback(subscription.endpoint);
+    }).catch(() => undefined);
+    return unsubscribe;
+  }
+
   static onNotificationClicked(
     callback: (notification: PushNotification) => void
   ): UnsubscribeFn {
@@ -586,8 +612,10 @@ export class PushPlatform {
       if (!notification || typeof notification !== 'object') return;
 
       if (type === 'NOTIFICATION_WILL_DISPLAY') {
-        const event = { notification, preventDefault() { navigator.serviceWorker.controller?.postMessage({ type: 'PREVENT_DEFAULT' }); } };
-        PushPlatform.eventEmitter.emit('notificationWillDisplay', event);
+        const prevented = settleWillDisplay((preventDefault) => {
+          PushPlatform.eventEmitter.emit('notificationWillDisplay', { notification, preventDefault });
+        });
+        if (prevented) navigator.serviceWorker.controller?.postMessage({ type: 'PREVENT_DEFAULT' });
       } else if (type === 'NOTIFICATION_RECEIVED') {
         PushPlatform.eventEmitter.emit('notificationReceived', notification);
       } else if (type === 'NOTIFICATION_CLICKED') {
@@ -614,7 +642,10 @@ export class PushPlatform {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'Application ID is required');
     }
 
-    const baseURL = config.url || config.apiBaseURL || 'https://api.pushpilot.ru';
+    if (config.apiBaseURL && !config.url) {
+      throw new SDKError(ErrorCode.INVALID_CONFIG, 'url is required');
+    }
+    const baseURL = config.url || 'https://api.pushpilot.ru';
 
     if (config.browserAuth && !/^wbpub_[A-Za-z0-9_-]{6,80}$/.test(config.apiKey || '')) {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'browserAuth requires a public wbpub_ browser key');

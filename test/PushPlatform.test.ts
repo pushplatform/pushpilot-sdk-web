@@ -65,7 +65,7 @@ describe('PushPlatform', () => {
   const validConfig = {
     apiKey: 'test-api-key',
     applicationId: '12345678-1234-4234-8234-123456789012',
-    apiBaseURL: 'https://api.test.com',
+    url: 'https://api.test.com',
     environment: 'production' as const,
     debugMode: false,
   };
@@ -103,12 +103,19 @@ describe('PushPlatform', () => {
 
     it('uses the public API when url is omitted', async () => {
       await PushPlatform.initialize({ applicationId: validConfig.applicationId });
-      expect((PushPlatform as any).config.apiBaseURL).toBe('https://api.pushpilot.ru');
+      expect((PushPlatform as any).config.url).toBe('https://api.pushpilot.ru');
       expect((PushPlatform as any).config.environment).toBeUndefined();
     });
 
-    it('should throw error if apiBaseURL is invalid', async () => {
-      const invalidConfig = { ...validConfig, apiBaseURL: 'not-a-url' };
+    it('rejects apiBaseURL when url is absent', async () => {
+      await expect(PushPlatform.initialize({
+        applicationId: validConfig.applicationId,
+        apiBaseURL: 'https://api.test.com',
+      })).rejects.toMatchObject({ code: ErrorCode.INVALID_CONFIG, message: expect.stringContaining('url is required') });
+    });
+
+    it('should throw error if url is invalid', async () => {
+      const invalidConfig = { ...validConfig, url: 'not-a-url' };
 
       await expect(PushPlatform.initialize(invalidConfig)).rejects.toThrow(SDKError);
       await expect(PushPlatform.initialize(invalidConfig)).rejects.toMatchObject({
@@ -131,7 +138,7 @@ describe('PushPlatform', () => {
       const configWithoutEnv = {
         apiKey: validConfig.apiKey,
         applicationId: validConfig.applicationId,
-        apiBaseURL: validConfig.apiBaseURL,
+        url: validConfig.url,
       };
 
       await PushPlatform.initialize(configWithoutEnv);

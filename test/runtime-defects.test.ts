@@ -65,7 +65,7 @@ describe('Runtime Defects', () => {
       await PushPlatform.initialize({
         apiKey: 'test-key',
         applicationId: 'test-app-id',
-        apiBaseURL: 'http://localhost:8085',
+        url: 'http://localhost:8085',
         environment: 'development',
       });
 
@@ -92,7 +92,7 @@ describe('Runtime Defects', () => {
       await PushPlatform.initialize({
         apiKey: 'test-key',
         applicationId: 'test-app-id',
-        apiBaseURL: 'http://localhost:8085',
+        url: 'http://localhost:8085',
         environment: 'development',
       });
 
@@ -119,7 +119,7 @@ describe('Runtime Defects', () => {
         PushPlatform.initialize({
           apiKey: 'invalid-key',
           applicationId: 'test-app-id',
-          apiBaseURL: 'http://localhost:8085',
+          url: 'http://localhost:8085',
           environment: 'development',
         })
       ).rejects.toThrow();
@@ -141,7 +141,7 @@ describe('Runtime Defects', () => {
         await PushPlatform.initialize({
           apiKey: 'test-key',
           applicationId: 'test-app-id',
-          apiBaseURL: 'http://localhost:8085',
+          url: 'http://localhost:8085',
           environment: 'development',
         });
         expect.fail('Should have thrown');
@@ -164,7 +164,7 @@ describe('Runtime Defects', () => {
         PushPlatform.initialize({
           apiKey: 'test-key',
           applicationId: 'test-app-id',
-          apiBaseURL: 'http://localhost:8085',
+          url: 'http://localhost:8085',
           environment: 'development',
         })
       ).rejects.toThrow(/failed to register installation/i);
@@ -186,7 +186,7 @@ describe('Runtime Defects', () => {
       await PushPlatform.initialize({
         apiKey: 'valid-key',
         applicationId: 'test-app-id',
-        apiBaseURL: 'http://localhost:8085',
+        url: 'http://localhost:8085',
         environment: 'development',
       });
 
