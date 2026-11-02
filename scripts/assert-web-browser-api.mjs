@@ -65,7 +65,7 @@ globalThis.fetch = (url, options = {}) => {
   });
 };
 await PushPilot.initialize({
-  apiBaseURL: base.origin,
+  url: base.origin,
   applicationId: process.env.PUSHPILOT_WEB_TEST_APPLICATION_ID,
   apiKey: "wbpub_site_fixture",
   browserAuth: true,

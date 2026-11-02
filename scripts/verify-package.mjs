@@ -109,7 +109,7 @@ console.log(
 for (const extension of ["mts", "cts"]) {
   await writeFile(
     resolve(consumer, `types.${extension}`),
-    "import { PushPlatform, type PushPlatformConfig } from '@pushplatform/web-sdk'; const config: PushPlatformConfig = { apiKey: 'demo', applicationId: 'demo', apiBaseURL: 'http://localhost', serviceWorkerScope: '/' }; void PushPlatform.initialize(config);\n",
+    "import { PushPlatform, type PushPlatformConfig } from '@pushplatform/web-sdk'; const config: PushPlatformConfig = { apiKey: 'demo', applicationId: 'demo', url: 'http://localhost', serviceWorkerScope: '/' }; void PushPlatform.initialize(config);\n",
   );
 }
 console.log(

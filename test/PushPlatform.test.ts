@@ -107,13 +107,6 @@ describe('PushPlatform', () => {
       expect((PushPlatform as any).config.environment).toBeUndefined();
     });
 
-    it('rejects apiBaseURL when url is absent', async () => {
-      await expect(PushPlatform.initialize({
-        applicationId: validConfig.applicationId,
-        apiBaseURL: 'https://api.test.com',
-      })).rejects.toMatchObject({ code: ErrorCode.INVALID_CONFIG, message: expect.stringContaining('url is required') });
-    });
-
     it('should throw error if url is invalid', async () => {
       const invalidConfig = { ...validConfig, url: 'not-a-url' };
 

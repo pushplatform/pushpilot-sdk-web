@@ -12,7 +12,7 @@
 
 | Поле | Назначение |
 | --- | --- |
-| `apiBaseURL` | Абсолютный HTTP(S) URL API/шлюза без query, fragment, userinfo. Без `/v1`; завершающий `/` удаляется SDK. |
+| `url` | Абсолютный HTTP(S) URL API/шлюза без query, fragment, userinfo. Без `/v1`; завершающий `/` удаляется SDK. |
 | `apiKey` | Публичный `wbpub_` browser key приложения при `browserAuth: true`. Проектный секрет браузеру не передаётся. |
 | `browserAuth` | Используйте `true` для `/v1/web/{apiKey}/installations` и credential своей установки. Для значения по умолчанию `false` см. раздел совместимости. |
 | `installationCredential` | Credential своей установки, выданная доверенным сервером сайта для recovery. Не проектный секрет; сервер проверяет её при регистрации. |

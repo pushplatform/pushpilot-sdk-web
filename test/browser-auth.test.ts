@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { APIClient } from "../src/APIClient";
 
 const config = {
-  apiBaseURL: "https://api.example",
+  url: "https://api.example",
   apiKey: "wbpub_site_fixture",
   applicationId: "app-fixture",
   environment: "production" as const,
@@ -69,7 +69,7 @@ describe("Browser installation authentication", () => {
   it.each([
     { applicationId: "other-app" },
     { environment: "development" as const },
-    { apiBaseURL: "https://other-api.example" },
+    { url: "https://other-api.example" },
     { apiKey: "wbpub_other_fixture" },
   ])(
     "does not share installation credentials across scope %j",

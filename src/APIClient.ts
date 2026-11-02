@@ -16,13 +16,14 @@ export class APIClient {
   private credentialStorageKey: string;
 
   constructor(config: PushPlatformConfig) {
+    const url = (config.url || '').replace(/\/+$/, '');
     this.config = {
       ...config,
-      apiBaseURL: (config.url || config.apiBaseURL || '').replace(/\/+$/, ''),
+      url,
       apiKey: config.browserAuth ? config.apiKey : undefined,
     };
     this.credentialStorageKey = 'pushpilot_web_credential:' + JSON.stringify([
-      (config.apiBaseURL || '').replace(/\/+$/, ''), config.applicationId, config.environment || 'production', config.apiKey || '',
+      url, config.applicationId, config.environment || 'production', config.apiKey || '',
     ]);
     if (config.browserAuth) {
       if (config.installationCredential) {
@@ -36,7 +37,7 @@ export class APIClient {
   }
 
   private get installationURL(): string {
-    const base = (this.config.apiBaseURL || '').replace(/\/+$/, '');
+    const base = (this.config.url || '').replace(/\/+$/, '');
     return this.config.browserAuth
       ? `${base}/v1/web/${encodeURIComponent(this.config.apiKey || '')}/installations`
       : `${base}/v1/installations`;
