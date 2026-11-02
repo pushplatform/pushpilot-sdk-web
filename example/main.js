@@ -61,9 +61,13 @@ byId("config").addEventListener("submit", (event) => {
   event.preventDefault();
   void run(async () => {
     const config = Object.fromEntries(new FormData(event.currentTarget));
+    const browserAuth = config.browserAuth === "on";
     await PushPlatform.initialize({
-      ...config,
-      browserAuth: config.browserAuth === "on",
+      applicationId: config.applicationId,
+      url: config.url || config.apiBaseURL,
+      environment: config.environment,
+      vapidPublicKey: config.vapidPublicKey,
+      ...(browserAuth ? { browserAuth: true, apiKey: config.apiKey } : {}),
       serviceWorkerPath: "./service-worker.js",
       serviceWorkerScope: "./",
     });
