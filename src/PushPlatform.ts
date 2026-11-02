@@ -179,6 +179,7 @@ export class PushPlatform {
 
     PushPlatform.removeMessageListener?.();
     PushPlatform.setupServiceWorkerListener();
+    PushPlatform.configureOpens();
     PushPlatform.initialized = true;
 
     if (PushPlatform.config.debugMode) {
@@ -432,6 +433,7 @@ export class PushPlatform {
         pushSubscription
       );
       localStorage.setItem(PushPlatform.subscriptionIdStorageKey, PushPlatform.currentSubscriptionId);
+      PushPlatform.configureOpens();
 
       // Serialize and return
       const subscription = PushPlatform.subscriptionManager.serializeSubscription(pushSubscription);
@@ -492,6 +494,7 @@ export class PushPlatform {
       await PushPlatform.subscriptionManager.unsubscribe();
       PushPlatform.currentSubscriptionId = null;
       localStorage.removeItem(PushPlatform.subscriptionIdStorageKey);
+      PushPlatform.configureOpens();
 
       if (PushPlatform.config?.debugMode) {
         console.log('[PushPlatform] Unsubscribed');
@@ -600,7 +603,24 @@ export class PushPlatform {
     return PushPlatform.eventEmitter.on('notificationClicked', callback);
   }
 
+  /** Server id of this browser's push subscription, or null before subscribe(). */
+  static getSubscriptionId(): string | null {
+    PushPlatform.ensureInitialized();
+    return PushPlatform.currentSubscriptionId;
+  }
+
   // Private helpers
+
+  /** The worker reports clicks with this configuration, also when no page is open. */
+  private static configureOpens(): void {
+    if (!PushPlatform.config) return;
+    PushPlatform.serviceWorkerManager?.postMessage({
+      type: 'CONFIGURE_OPENS',
+      url: PushPlatform.config.url,
+      applicationId: PushPlatform.config.applicationId,
+      subscriptionId: PushPlatform.currentSubscriptionId,
+    });
+  }
 
   /**
    * Setup service worker message listener

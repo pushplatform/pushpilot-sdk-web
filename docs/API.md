@@ -37,6 +37,7 @@
 | `subscribe()` | `Promise<{endpoint, keys: {p256dh, auth}}>`, повторно использует подписку браузера и регистрирует её в API. |
 | `unsubscribe()` | `Promise<void>`, сначала удаление из API, затем в браузере; при API-ошибке локальная подписка сохраняется для повтора. |
 | `getSubscription()` | Подписка браузера или `null`; не подтверждает успешную регистрацию в API. |
+| `getSubscriptionId()` | `string \| null`, id подписки в API после `subscribe()`. С ним worker сообщает открытие через `PUT /notifications/{id}`. |
 | `login(userId, identityProof?)` / `logout()` | Привязка / отвязка external user ID, `Promise<void>`. В browserAuth login требует одноразовый proof сервера сайта. |
 | `onNotificationReceived(callback)` / `onNotificationClicked(callback)` | Возвращают функцию удаления callback; страница должна быть открыта и инициализирована. |
 
