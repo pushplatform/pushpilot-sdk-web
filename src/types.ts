@@ -74,6 +74,12 @@ export interface PushPlatformConfig {
    * Enable debug logging (optional, default: false)
    */
   debugMode?: boolean;
+
+  /**
+   * Seconds before a foreground banner is shown if the page does not decide.
+   * Zero, null, or omission waits for the handler. A positive number shows the system banner if it does not.
+   */
+  foregroundBannerFallback?: number | null;
 }
 
 /**

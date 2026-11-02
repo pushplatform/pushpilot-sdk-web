@@ -1,6 +1,13 @@
 /** PushPilot notification handlers. Can be imported by an existing classic worker. */
 /// <reference lib="webworker" />
 const sw = self as unknown as ServiceWorkerGlobalScope;
+let foregroundBannerFallback = 0;
+
+sw.addEventListener("message", (event) => {
+  if (event.data?.type !== "CONFIGURE_DISPLAY") return;
+  const seconds = Number(event.data.foregroundBannerFallback);
+  foregroundBannerFallback = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+});
 
 sw.addEventListener("push", (event) => {
   let payload: Record<string, any> = {};
@@ -32,20 +39,30 @@ sw.addEventListener("push", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
-      const prevented = await new Promise<boolean>((resolve) => {
-        const schedule = (globalThis as { setTimeout?: (fn: () => void, ms: number) => number }).setTimeout;
-        const timer = schedule ? schedule(() => resolve(false), 100) : (resolve(false), 0);
-        const onMessage = (message: ExtendableMessageEvent) => {
-          if (message.data?.type !== "PREVENT_DEFAULT") return;
-          (globalThis as { clearTimeout?: (id: number) => void }).clearTimeout?.(timer);
-          sw.removeEventListener("message", onMessage);
-          resolve(true);
-        };
-        sw.addEventListener("message", onMessage);
-        clients.forEach((client) =>
-          client.postMessage({ type: "NOTIFICATION_WILL_DISPLAY", notification }),
-        );
-      });
+      let prevented = false;
+      if (clients.length > 0) {
+        prevented = await new Promise<boolean>((resolve) => {
+          let settled = false;
+          const finish = (value: boolean) => {
+            if (settled) return;
+            settled = true;
+            sw.removeEventListener("message", onMessage);
+            resolve(value);
+          };
+          const onMessage = (message: ExtendableMessageEvent) => {
+            const data = message.data;
+            if (data?.type !== "DISPLAY_DECISION" || data.id !== notification.id) return;
+            finish(data.prevented === true);
+          };
+          sw.addEventListener("message", onMessage);
+          if (foregroundBannerFallback > 0) {
+            setTimeout(() => finish(false), foregroundBannerFallback * 1000);
+          }
+          clients.forEach((client) =>
+            client.postMessage({ type: "NOTIFICATION_WILL_DISPLAY", notification }),
+          );
+        });
+      }
       if (!prevented) await sw.registration.showNotification(notification.title, options);
       clients.forEach((client) =>
         client.postMessage({ type: "NOTIFICATION_RECEIVED", notification }),

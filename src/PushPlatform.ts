@@ -144,6 +144,10 @@ export class PushPlatform {
       PushPlatform.config.serviceWorkerPath || '/service-worker.js',
       PushPlatform.config.serviceWorkerScope
     );
+    PushPlatform.serviceWorkerManager.postMessage({
+      type: 'CONFIGURE_DISPLAY',
+      foregroundBannerFallback: PushPlatform.config.foregroundBannerFallback || 0,
+    });
 
     // Get or create installation ID
     const installationId = StorageManager.getInstallationId();
@@ -614,7 +618,11 @@ export class PushPlatform {
         const prevented = settleWillDisplay((preventDefault) => {
           PushPlatform.eventEmitter.emit('notificationWillDisplay', { notification, preventDefault });
         });
-        if (prevented) navigator.serviceWorker.controller?.postMessage({ type: 'PREVENT_DEFAULT' });
+        navigator.serviceWorker.controller?.postMessage({
+          type: 'DISPLAY_DECISION',
+          id: notification.id,
+          prevented,
+        });
       } else if (type === 'NOTIFICATION_RECEIVED') {
         PushPlatform.eventEmitter.emit('notificationReceived', notification);
       } else if (type === 'NOTIFICATION_CLICKED') {
@@ -662,6 +670,16 @@ export class PushPlatform {
         ErrorCode.INVALID_CONFIG,
         'Environment must be "development" or "production"'
       );
+    }
+
+    if (config.foregroundBannerFallback != null) {
+      const seconds = config.foregroundBannerFallback;
+      if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) {
+        throw new SDKError(
+          ErrorCode.INVALID_CONFIG,
+          'foregroundBannerFallback must be a non-negative number of seconds'
+        );
+      }
     }
   }
 }
