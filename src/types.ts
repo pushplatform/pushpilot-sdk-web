@@ -31,7 +31,7 @@ export interface JSONArray extends Array<JSONValue> {}
  */
 export interface PushPlatformConfig {
   /**
-   * Shared application key, also used by native SDKs and your server. It is extractable and grants sending access to this application.
+   * Public browser key (`wbpub_…`) for browserAuth. Other keys are not sent.
    */
   apiKey?: string;
 
@@ -54,9 +54,7 @@ export interface PushPlatformConfig {
    */
   url?: string;
 
-  /**
-   * @deprecated Use url.
-   */
+  /** Rejected when url is absent. */
   apiBaseURL?: string;
 
   /** Web Push VAPID application server public key (base64url, 65-byte uncompressed P-256 key). */

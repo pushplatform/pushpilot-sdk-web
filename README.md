@@ -7,7 +7,7 @@ PushPilot подключает Web Push к вашему сайту: запраш
 ## Установка
 
 ```sh
-npm install @pushplatform/web-sdk@0.3.0
+npm install @pushplatform/web-sdk@0.3.1
 ```
 
 ```js
@@ -23,7 +23,7 @@ Runtime-зависимостей нет.
 
 - HTTPS URL API PushPilot, без `/v1` в конце.
 - UUID приложения PushPilot — того же, что для iOS/Android.
-- Общий бессрочный ключ приложения из консоли. Он намеренно извлекаем из JavaScript и разрешает регистрацию устройств и отправку в этом приложении.
+- Адрес API в поле `url`. `apiBaseURL` без `url` — ошибка конфигурации. `apiKey` в запрос адреса не отправляется. Исключение — `browserAuth` с публичным ключом `wbpub_`.
 - Разрешённый origin сайта в настройках Web Push, например `https://shop.example`.
 - VAPID public key этого приложения. Private VAPID key и APNs/FCM credentials остаются на сервере.
 
@@ -94,12 +94,17 @@ async function start() {
   }
   try {
     await PushPilot.initialize({
-      apiBaseURL: 'https://api.example.com',
+      url: 'https://api.example.com',
       applicationId: 'YOUR_APPLICATION_UUID',
-      apiKey: 'APPLICATION_KEY',
       vapidPublicKey: 'YOUR_PUBLIC_VAPID_KEY',
       serviceWorkerPath: '/pushpilot-sw.js',
       serviceWorkerScope: '/',
+    });
+    PushPilot.onNotificationWillDisplay(event => {
+      // event.preventDefault() до возврата обработчика скрывает системный баннер.
+    });
+    PushPilot.onPushToken(token => {
+      output.textContent = `Токен: ${token}`;
     });
     PushPilot.onNotificationClicked(notification => {
       output.textContent = `Открыто уведомление: ${notification.title || notification.id}`;
