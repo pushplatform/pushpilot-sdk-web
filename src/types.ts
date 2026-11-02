@@ -210,6 +210,11 @@ export interface PushNotification {
    * Event ID for deduplication (optional)
    */
   eventId?: string;
+
+  /**
+   * Server notification id (the `id` from `POST /notifications`). Clicks are reported with it.
+   */
+  notificationId?: string;
 }
 
 /**

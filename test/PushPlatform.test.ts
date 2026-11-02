@@ -343,4 +343,30 @@ describe('PushPlatform backend unsubscribe lifecycle', () => {
     expect(apiClient.deleteSubscription).not.toHaveBeenCalled();
     expect(subscriptionManager.unsubscribe).toHaveBeenCalledTimes(2);
   });
+
+  it('tells the worker the subscription id for click reports and clears it on unsubscribe', async () => {
+    const { subscriptionManager } = setup();
+    const postMessage = vi.fn();
+    (PushPlatform as any).config = { url: 'https://api.test.com', applicationId: 'app-1' };
+    (PushPlatform as any).serviceWorkerManager = { postMessage };
+    (subscriptionManager as any).subscribe = vi.fn().mockResolvedValue({ endpoint: 'https://push.example/sub' });
+    (subscriptionManager as any).serializeSubscription = vi.fn().mockReturnValue({ endpoint: 'https://push.example/sub' });
+    (PushPlatform as any).currentSubscriptionId = null;
+    (global as any).Notification = { permission: 'granted' };
+    (PushPlatform as any).config.browserAuth = true;
+
+    await PushPlatform.subscribe();
+    expect(PushPlatform.getSubscriptionId()).toBe('sub-1');
+    expect(postMessage).toHaveBeenLastCalledWith({
+      type: 'CONFIGURE_OPENS',
+      url: 'https://api.test.com',
+      applicationId: 'app-1',
+      subscriptionId: 'sub-1',
+    });
+
+    await PushPlatform.unsubscribe();
+    expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({ subscriptionId: null }));
+    (PushPlatform as any).config = null;
+    (PushPlatform as any).serviceWorkerManager = null;
+  });
 });

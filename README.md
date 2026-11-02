@@ -7,7 +7,7 @@ PushPilot подключает Web Push к вашему сайту: запраш
 ## Установка
 
 ```sh
-npm install @pushplatform/web-sdk@0.3.3
+npm install @pushplatform/web-sdk@0.3.4
 ```
 
 ```js
@@ -174,6 +174,15 @@ URL заменяется адресом scope. `custom_data.url` также по
 `onNotificationClicked()` сообщает событие уже открытой и инициализированной
 странице. При запуске сайта из закрытого состояния обрабатывайте адрес страницы
 и его параметры: callback после открытия новой страницы не гарантируется.
+
+Открытие сообщает сам worker: при нажатии он отправляет
+`PUT {url}/notifications/{id}` с `app_id`, `subscription_id` и `opened: true`,
+даже если ни одна страница сайта не открыта. Адрес API, `applicationId` и
+`subscriptionId` страница передаёт worker после `initialize()` и `subscribe()`;
+worker хранит их в IndexedDB. Нажатие до этого ждёт в очереди. Origin сайта
+должен быть указан в настройках Web Push приложения. В событиях `notificationId`
+содержит id из ответа `POST /notifications`, а поле `notification_id` не попадает
+в `data`. `PushPilot.getSubscriptionId()` возвращает id подписки браузера.
 
 ## Поддержка браузеров и ограничения
 
