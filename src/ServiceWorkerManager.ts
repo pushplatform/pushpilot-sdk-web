@@ -94,14 +94,9 @@ export class ServiceWorkerManager {
    * Post message to service worker
    */
   postMessage(message: any): void {
-    if (!this.registration?.active) {
-      throw new SDKError(
-        ErrorCode.UNKNOWN_ERROR,
-        'Service worker not active'
-      );
-    }
-
-    this.registration.active.postMessage(message);
+    const worker = this.registration?.active;
+    if (!worker || typeof worker.postMessage !== 'function') return;
+    worker.postMessage(message);
   }
 
   /**
