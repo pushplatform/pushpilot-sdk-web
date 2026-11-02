@@ -54,9 +54,6 @@ export interface PushPlatformConfig {
    */
   url?: string;
 
-  /** Rejected when url is absent. */
-  apiBaseURL?: string;
-
   /** Web Push VAPID application server public key (base64url, 65-byte uncompressed P-256 key). */
   vapidPublicKey?: string;
 

@@ -7,7 +7,7 @@ PushPilot подключает Web Push к вашему сайту: запраш
 ## Установка
 
 ```sh
-npm install @pushplatform/web-sdk@0.3.1
+npm install @pushplatform/web-sdk@0.3.2
 ```
 
 ```js
@@ -23,7 +23,7 @@ Runtime-зависимостей нет.
 
 - HTTPS URL API PushPilot, без `/v1` в конце.
 - UUID приложения PushPilot — того же, что для iOS/Android.
-- Адрес API в поле `url`. `apiBaseURL` без `url` — ошибка конфигурации. `apiKey` в запрос адреса не отправляется. Исключение — `browserAuth` с публичным ключом `wbpub_`.
+- Адрес API в поле `url`. `apiKey` в запрос адреса не отправляется. Исключение — `browserAuth` с публичным ключом `wbpub_`.
 - Разрешённый origin сайта в настройках Web Push, например `https://shop.example`.
 - VAPID public key этого приложения. Private VAPID key и APNs/FCM credentials остаются на сервере.
 

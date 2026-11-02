@@ -5,7 +5,7 @@ import { SDKError } from '../src/types';
 const config = {
   apiKey: 'key',
   applicationId: 'app',
-  apiBaseURL: 'http://localhost:8085',
+  url: 'http://localhost:8085',
   environment: 'production' as const,
 };
 

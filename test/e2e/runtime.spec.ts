@@ -30,7 +30,7 @@ for (const entry of ["index.html", "npm.html"]) {
       });
     });
     const connect = async () => {
-      await page.locator("[name=apiBaseURL]").fill("http://127.0.0.1:3000/api");
+      await page.locator("[name=url]").fill("http://127.0.0.1:3000/api");
       await page.locator("[name=applicationId]").fill("application-fixture");
       await page.locator("[name=apiKey]").fill("wbpub_site_fixture");
       await page.locator("[name=browserAuth]").check();

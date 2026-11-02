@@ -116,13 +116,12 @@ export class PushPlatform {
     }
 
     // Store configuration
-    const apiBaseURL = (config.url || 'https://api.pushpilot.ru').replace(/\/+$/, '');
+    const url = (config.url || 'https://api.pushpilot.ru').replace(/\/+$/, '');
     const environment = config.environment || (config.url ? 'development' : undefined);
     PushPlatform.config = {
       ...config,
       apiKey: config.browserAuth ? config.apiKey : undefined,
-      url: config.url || apiBaseURL,
-      apiBaseURL,
+      url,
       environment,
       serviceWorkerPath: config.serviceWorkerPath || '/service-worker.js',
       debugMode: config.debugMode ?? false,
@@ -642,9 +641,6 @@ export class PushPlatform {
       throw new SDKError(ErrorCode.INVALID_CONFIG, 'Application ID is required');
     }
 
-    if (config.apiBaseURL && !config.url) {
-      throw new SDKError(ErrorCode.INVALID_CONFIG, 'url is required');
-    }
     const baseURL = config.url || 'https://api.pushpilot.ru';
 
     if (config.browserAuth && !/^wbpub_[A-Za-z0-9_-]{6,80}$/.test(config.apiKey || '')) {

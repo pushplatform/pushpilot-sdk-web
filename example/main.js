@@ -64,7 +64,7 @@ byId("config").addEventListener("submit", (event) => {
     const browserAuth = config.browserAuth === "on";
     await PushPlatform.initialize({
       applicationId: config.applicationId,
-      url: config.url || config.apiBaseURL,
+      url: config.url,
       environment: config.environment,
       vapidPublicKey: config.vapidPublicKey,
       ...(browserAuth ? { browserAuth: true, apiKey: config.apiKey } : {}),

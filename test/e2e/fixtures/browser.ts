@@ -80,7 +80,7 @@ export async function fixtures(
   );
 }
 export async function initialize(page: Page) {
-  await page.locator("[name=apiBaseURL]").fill("http://127.0.0.1:3000/api");
+  await page.locator("[name=url]").fill("http://127.0.0.1:3000/api");
   await page.locator("[name=applicationId]").fill("application-fixture");
   await page.locator("[name=apiKey]").fill("local-fixture-key");
   const key = Buffer.from([4, ...new Uint8Array(64)]).toString("base64url");
