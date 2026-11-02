@@ -229,10 +229,14 @@ test("packed worker import preserves host lexical bindings and installs push han
     const waits: Promise<unknown>[] = [];
     const event = new Event("push");
     Object.defineProperties(event, {
-      data: { value: { json: () => ({ title: "Imported handler" }) } },
+      data: { value: { json: () => ({ id: "imported", title: "Imported handler" }) } },
       waitUntil: { value: (promise: Promise<unknown>) => waits.push(promise) },
     });
     scope.dispatchEvent(event);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    scope.dispatchEvent(new MessageEvent("message", {
+      data: { type: "DISPLAY_DECISION", id: "imported", prevented: false },
+    }));
     await Promise.all(waits);
     return { hostValues: scope.hostValues(), shownTitle };
   });
