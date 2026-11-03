@@ -68,4 +68,7 @@ jobs:
           name: npm-release
           path: release-artifact
       - name: Publish the verified archive with npm trusted publishing
-        run: npm publish release-artifact/*.tgz --ignore-scripts --access public --tag latest
+        run: |
+          tarball=$(find release-artifact -name '*.tgz' -print -quit)
+          test -n "$tarball"
+          npm publish "$tarball" --ignore-scripts --access public --tag latest
