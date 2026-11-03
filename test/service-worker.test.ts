@@ -229,16 +229,15 @@ describe("Notification opens", () => {
     });
     const clicked = harness.client.postMessage.mock.calls.at(-1)[0].notification;
     expect(clicked).not.toHaveProperty("notification_id");
-    expect(harness.fetch).toHaveBeenCalledOnce();
-    const [url, init] = harness.fetch.mock.calls[0];
-    expect(url).toBe("https://api.example/notifications/n-1");
-    expect(init.method).toBe("PUT");
-    expect(init.headers).not.toHaveProperty("Authorization");
-    expect(JSON.parse(init.body)).toEqual({
-      app_id: "app-1",
-      subscription_id: "sub-1",
-      opened: true,
-    });
+    expect(harness.fetch).toHaveBeenCalledTimes(2);
+    const bodies = harness.fetch.mock.calls.map((call) => JSON.parse(call[1].body));
+    expect(bodies).toEqual([
+      { app_id: "app-1", subscription_id: "sub-1", received: true },
+      { app_id: "app-1", subscription_id: "sub-1", opened: true },
+    ]);
+    expect(harness.fetch.mock.calls[0][0]).toBe("https://api.example/notifications/n-1");
+    expect(harness.fetch.mock.calls[0][1].method).toBe("PUT");
+    expect(harness.fetch.mock.calls[0][1].headers).not.toHaveProperty("Authorization");
   });
 
   it("reads notification_id from background custom data", async () => {
@@ -266,7 +265,8 @@ describe("Notification opens", () => {
   it("retries after a network failure but drops a rejected open", async () => {
     let attempt = 0;
     const harness = worker({
-      fetch: async () => {
+      fetch: async (_url: string, init: { body: string }) => {
+        if (JSON.parse(init.body).received) return { status: 200 };
         attempt += 1;
         if (attempt === 1) throw new TypeError("offline");
         return { status: 404 };
@@ -274,11 +274,11 @@ describe("Notification opens", () => {
     });
     await harness.dispatch("message", configure("sub-1"));
     await pushAndClick(harness, { title: "Retry", notification_id: "n-4" });
-    expect(harness.fetch).toHaveBeenCalledTimes(1);
-    await harness.dispatch("message", configure("sub-1"));
     expect(harness.fetch).toHaveBeenCalledTimes(2);
     await harness.dispatch("message", configure("sub-1"));
-    expect(harness.fetch).toHaveBeenCalledTimes(2);
+    expect(harness.fetch).toHaveBeenCalledTimes(3);
+    await harness.dispatch("message", configure("sub-1"));
+    expect(harness.fetch).toHaveBeenCalledTimes(3);
   });
 
   it("does not report a click without notification_id", async () => {

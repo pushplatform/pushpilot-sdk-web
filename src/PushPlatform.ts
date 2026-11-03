@@ -180,6 +180,12 @@ export class PushPlatform {
     PushPlatform.removeMessageListener?.();
     PushPlatform.setupServiceWorkerListener();
     PushPlatform.configureOpens();
+    PushPlatform.reportSession();
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') PushPlatform.reportSession();
+      });
+    }
     PushPlatform.initialized = true;
 
     if (PushPlatform.config.debugMode) {
@@ -610,6 +616,17 @@ export class PushPlatform {
   }
 
   // Private helpers
+
+  private static reportSession(): void {
+    const config = PushPlatform.config;
+    const subscriptionId = PushPlatform.currentSubscriptionId;
+    if (!config?.url || !subscriptionId) return;
+    void fetch(`${config.url}/session`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_id: config.applicationId, subscription_id: subscriptionId }),
+    }).catch(() => undefined);
+  }
 
   /** The worker reports clicks with this configuration, also when no page is open. */
   private static configureOpens(): void {

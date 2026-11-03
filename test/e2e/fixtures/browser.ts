@@ -13,6 +13,9 @@ export async function fixtures(
     if (!url.pathname.startsWith("/api/")) return route.continue();
     const request = route.request();
     if (request.method() === "DELETE") return route.fulfill({ status: 204 });
+    if (request.method() === "PUT" && (["/api/session", "/api/badge"].includes(url.pathname) || url.pathname.startsWith("/api/notifications/"))) {
+      return route.fulfill({ status: 200, json: { success: true } });
+    }
     const body = request.postDataJSON();
     if (url.pathname.endsWith("/tokens")) {
       expect(body).toMatchObject({
