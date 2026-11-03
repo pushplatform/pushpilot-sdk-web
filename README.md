@@ -7,7 +7,7 @@ PushPilot подключает Web Push к вашему сайту: запраш
 ## Установка
 
 ```sh
-npm install @pushplatform/web-sdk@0.3.4
+npm install @pushplatform/web-sdk@0.3.5
 ```
 
 ```js

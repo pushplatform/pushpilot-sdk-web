@@ -108,6 +108,25 @@ async function reportOpen(id: string): Promise<void> {
   await flushOpens();
 }
 
+async function reportReceived(id: string): Promise<void> {
+  await loadOpenState();
+  const config = openConfig;
+  if (!config?.subscriptionId) return;
+  try {
+    await fetch(`${config.url}/notifications/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        app_id: config.applicationId,
+        subscription_id: config.subscriptionId,
+        received: true,
+      }),
+    });
+  } catch {
+    // The banner is already shown. A missed receipt stays null until another push.
+  }
+}
+
 function openConfigFrom(message: Record<string, unknown>): OpenConfig | null {
   const { url, applicationId, subscriptionId } = message;
   if (typeof url !== "string" || typeof applicationId !== "string") return null;
@@ -202,6 +221,7 @@ sw.addEventListener("push", (event) => {
         });
       }
       if (!prevented) await sw.registration.showNotification(notification.title, options);
+      if (notificationId) await reportReceived(notificationId);
       clients.forEach((client) =>
         client.postMessage({ type: "NOTIFICATION_RECEIVED", notification }),
       );
