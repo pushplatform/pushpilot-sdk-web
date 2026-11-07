@@ -1,5 +1,9 @@
 # 0.3.5 — 2026-11-03
 
+## 0.3.6
+
+Report the package version in device registration; align install documentation and lockfile.
+
 - Service worker при получении пуша отправляет `received: true`. Клик по-прежнему отправляет только открытие.
 - Страница при инициализации и при возврате на вкладку отправляет `PUT /session`.
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { APIClient } from '../src/APIClient';
 import { SDKError } from '../src/types';
+import packageInfo from '../package.json';
 
 const config = {
   apiKey: 'key',
@@ -76,7 +77,7 @@ describe('Unified application metadata', () => {
     try {
       await new APIClient({ ...config, appVersion: '2.7' }).registerInstallation({ installationId: 'persistent-device', platform: 'web', environment: 'production' });
       const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-      expect(body).toMatchObject({ application_id: 'app', device_id: 'persistent-device', device_kind: 'unknown', locale: 'ru-RU', notification_permission: 'denied', app_version: '2.7', sdk_version: '0.2.0' });
+      expect(body).toMatchObject({ application_id: 'app', device_id: 'persistent-device', device_kind: 'unknown', locale: 'ru-RU', notification_permission: 'denied', app_version: '2.7', sdk_version: packageInfo.version });
       expect(body.timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
       expect(body.device_model).toBeUndefined();
       expect(body.os_version).toBeUndefined();
