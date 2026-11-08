@@ -52,7 +52,8 @@
     "prepack": "npm run build",
     "prepare:example": "npm run build && node scripts/copy-assets.mjs",
     "test:browser": "npm run pack:check && playwright test",
-    "release:check": "npm run typecheck && npm test && npm run test:browser"
+    "release:check": "npm run typecheck && npm test && npm run test:browser",
+    "prepare": "npm run build"
   },
   "keywords": [
     "push",
