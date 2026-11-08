@@ -1,5 +1,3 @@
-> Версия 0.2.0: для нового подключения используйте общий бессрочный application key, `browserAuth` оставьте выключенным, `environment` можно не указывать. Проект и отдельный шлюз не нужны. Описанный далее режим wbpub/proof остаётся совместимостью для прежних сайтов. Ключ извлекаем из JavaScript и разрешает регистрацию и отправку только в одном приложении. API управления организацией и оплаты ему недоступны.
-
 # Конфигурация и API Web SDK
 
 Все методы доступны у `PushPilot`. SDK — singleton:
@@ -12,7 +10,6 @@
 
 | Поле | Назначение |
 | --- | --- |
-| `url` | Абсолютный HTTP(S) URL API/шлюза без query, fragment, userinfo. Без `/v1`; завершающий `/` удаляется SDK. |
 | `apiKey` | Публичный `wbpub_` browser key приложения при `browserAuth: true`. Проектный секрет браузеру не передаётся. |
 | `browserAuth` | Используйте `true` для `/v1/web/{apiKey}/installations` и credential своей установки. Для значения по умолчанию `false` см. раздел совместимости. |
 | `installationCredential` | Credential своей установки, выданная доверенным сервером сайта для recovery. Не проектный секрет; сервер проверяет её при регистрации. |
@@ -60,7 +57,7 @@ verified login/logout. 401/403 сохраняются как `api_error`; creden
 HTTP status; API возвращает `Retry-After: 60`, автоматических повторов нет.
 [Серверный контракт](https://github.com/pushplatform/pushpilot-server/blob/main/docs/WEB_BROWSER_AUTH.md).
 
-Каждый запрос содержит `Authorization: Bearer <apiKey>`. JSON-запросы также
+Обычная регистрация использует UUID приложения. В режиме browserAuth используются публичный wbpub-ключ и credentials установки. JSON-запросы также
 содержат `Content-Type: application/json`. Fetch имеет таймаут получения ответа
 15 секунд; сетевые ошибки — `network_error`. HTTP-ошибки сохраняют статус в
 `SDKError.context.status`. Ошибки инициализации не подменяют `api_error` сетевой

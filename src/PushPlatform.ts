@@ -63,8 +63,7 @@ export class PushPlatform {
    * @example
    * ```typescript
    * await PushPlatform.initialize({
-   *   applicationId: 'app-uuid',
-   *   url: 'https://api.pushplatform.com',
+   *   applicationId: 'YOUR_APPLICATION_UUID',
    *   environment: 'production',
    *   debugMode: false,
    * });
