@@ -1,3 +1,4 @@
+import packageInfo from '../package.json';
 /**
  * @pushplatform/web-sdk
  *
@@ -86,7 +87,7 @@ export class APIClient {
           device_kind: 'unknown',
           locale: typeof navigator !== 'undefined' ? navigator.language || undefined : undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
-          sdk_version: '0.2.0',
+          sdk_version: packageInfo.version,
           app_version: this.config.appVersion,
           notification_permission: typeof Notification === 'undefined' ? 'unknown' : Notification.permission === 'default' ? 'prompt' : Notification.permission,
         }),
