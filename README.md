@@ -4,10 +4,24 @@ PushPilot подключает Web Push к вашему сайту: запраш
 регистрирует подписку в PushPilot, позволяет отписаться и обрабатывать нажатия
 на уведомления. Работает через npm или обычный `<script>`.
 
+## Формы инициализации
+
+Выполните один из вариантов один раз при запуске приложения.
+`debugMode: true` включает диагностику; для обычной работы используйте `false`.
+
+```typescript
+await PushPilot.initialize({
+  applicationId: 'YOUR_APPLICATION_UUID',
+  debugMode: true,
+});
+
+await PushPilot.initialize('YOUR_APPLICATION_UUID');
+```
+
 ## Установка
 
 ```sh
-npm install @pushplatform/web-sdk@0.3.6
+npm install @pushplatform/web-sdk
 ```
 
 ```js
@@ -21,9 +35,7 @@ Runtime-зависимостей нет.
 
 Для подключения нужны:
 
-- HTTPS URL API PushPilot, без `/v1` в конце.
 - UUID приложения PushPilot — того же, что для iOS/Android.
-- Адрес API в поле `url`. `apiKey` в запрос адреса не отправляется. Исключение — `browserAuth` с публичным ключом `wbpub_`.
 - Разрешённый origin сайта в настройках Web Push, например `https://shop.example`.
 - VAPID public key этого приложения. Private VAPID key и APNs/FCM credentials остаются на сервере.
 
@@ -49,7 +61,7 @@ MIME type, без HTML fallback. Обновляйте копию worker при �
 <p id="push-status" role="status"></p>
 ```
 
-В файле приложения замените URL, UUID и публичные ключи своими значениями:
+В файле приложения замените UUID приложения и публичные ключи своими значениями:
 
 ```js
 import { PushPilot } from '@pushplatform/web-sdk';
@@ -94,12 +106,12 @@ async function start() {
   }
   try {
     await PushPilot.initialize({
-      url: 'https://api.example.com',
       applicationId: 'YOUR_APPLICATION_UUID',
       vapidPublicKey: 'YOUR_PUBLIC_VAPID_KEY',
       serviceWorkerPath: '/pushpilot-sw.js',
       serviceWorkerScope: '/',
-    });
+  debugMode: false,
+});
     PushPilot.onNotificationWillDisplay(event => {
       // event.preventDefault() до возврата обработчика скрывает системный баннер.
     });
