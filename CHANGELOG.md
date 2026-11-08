@@ -24,11 +24,11 @@ Report the package version in device registration; align install documentation a
 # 0.3.1 — 2026-11-02
 
 - Публичные `onNotificationWillDisplay` и `onPushToken`. Если подписка уже есть, `onPushToken` сразу получает текущий endpoint.
-- Адрес только `url`. `apiKey` не отправляется, кроме `browserAuth` с ключом `wbpub_`.
+- `apiKey` не отправляется, кроме `browserAuth` с ключом `wbpub_`.
 
 # 0.3.0 — 2026-11-01
 
-- `initialize` takes an application id or `{applicationId, url, environment}`. No API key. The default address is https://api.pushpilot.ru.
+- `initialize` takes an application id or `{applicationId, environment}`. No API key. The default address is https://api.pushpilot.ru.
 - A foreground notification can be prevented, and the push subscription endpoint is emitted as the device token.
 
 # 0.2.0 — 2026-11-01
